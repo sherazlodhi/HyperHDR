@@ -777,8 +777,39 @@ $(document).ready( function(){
 				$('#btn_submit_videoGrabber').attr('disabled', false);
 		});
 
+		window.conf_video_section_editor = conf_video_section_editor;
+
 		conf_video_section_editor.on('ready', function() {
 			SelectedDeviceChanged();
+			if ($('#btn_grabber_interactive_crop').length === 0)
+			{
+				var cropBannerHtml = `
+				<div class="alert alert-info d-flex align-items-center justify-content-between p-2 mb-3" style="font-size: 13px;">
+					<div class="d-flex align-items-center">
+						<svg data-src="svg/button_edit.svg" style="width:18px; margin-right:8px;" fill="currentColor" class="svg4hyperhdr"></svg>
+						<span><b>Interactive Video Cropping:</b> Crop video using visual stretchable boxes instead of typing numbers.</span>
+					</div>
+					<button type="button" class="btn btn-primary btn-sm ms-2" id="btn_grabber_interactive_crop">
+						<svg data-src="svg/button_play.svg" fill="currentColor" class="svg4hyperhdr"></svg>
+						<span>Interactive Crop Tool</span>
+					</button>
+				</div>`;
+				$('#editor_container_video_device').prepend(cropBannerHtml);
+				$('#btn_grabber_interactive_crop').off().on('click', function() {
+					if (typeof window.startLivePreviewCrop === 'function')
+					{
+						window.startLivePreviewCrop();
+					}
+					else
+					{
+						$("#btn_open_ledsim").trigger("click");
+						setTimeout(function() {
+							if (typeof window.startLivePreviewCrop === 'function')
+								window.startLivePreviewCrop();
+						}, 300);
+					}
+				});
+			}
 		});
 
 		$('#btn_submit_videoGrabber').off().on('click',function() 

@@ -66,6 +66,7 @@ $(document).ready(function() {
 			$('#vid_btn_1').text($.i18n('main_ledsim_btn_toggleleds').substring(0,4));
 			$('#vid_btn_2').text($.i18n('main_ledsim_btn_togglelednumber').substring(0,4));
 			$('#vid_btn_3').text($.i18n('main_ledsim_btn_togglelivevideo').substring(0,4));
+			$('#vid_btn_5').text($.i18n('main_ledsim_btn_cropvideo').substring(0,4));
 			$('#vid_btn_4').text($.i18n('main_ledsim_btn_screenshot').substring(0,4));
 		}
 		else
@@ -73,6 +74,7 @@ $(document).ready(function() {
 			$('#vid_btn_1').text($.i18n('main_ledsim_btn_toggleleds'));
 			$('#vid_btn_2').text($.i18n('main_ledsim_btn_togglelednumber'));
 			$('#vid_btn_3').text($.i18n('main_ledsim_btn_togglelivevideo'));
+			$('#vid_btn_5').text($.i18n('main_ledsim_btn_cropvideo'));
 			$('#vid_btn_4').text($.i18n('main_ledsim_btn_screenshot'));
 		}
 	};
@@ -118,7 +120,10 @@ $(document).ready(function() {
 			closed: function (e) {
 				modalOpened = false;
 				requestLedColorsStop();
-				requestLedImageStop();
+				if (!window.ledPreviewImageActive)
+					requestLedImageStop();
+				if (liveCropActive)
+					toggleLiveVideoCrop();
 			},
 			resizeStop: function (e) {
 				setStorage("ledsim_width", $("#live_preview_dialog").outerWidth());
@@ -283,6 +288,10 @@ $(document).ready(function() {
 		}
 	});
 
+	$('#vid_btn_crop').off().on("click", function() {
+		toggleLiveVideoCrop();
+	});
+
 	$("#btn_open_ledsim").off().on("click", function(event) {
 		
 		if (dialog == null ||typeof dialog === 'undefined')
@@ -314,14 +323,325 @@ $(document).ready(function() {
 		updateLedLayout();
 	});
 
+	var liveCropActive = false;
+	var curCropL = 0, curCropT = 0, curCropR = 0, curCropB = 0;
+	var backupCrop = null;
+	var isDraggingLiveCrop = false;
+
+	function toggleLiveVideoCrop()
+	{
+		liveCropActive = !liveCropActive;
+		if (liveCropActive)
+		{
+			$('#vid_btn_crop').removeClass('btn-warning').addClass('btn-success');
+			if (!window.imageStreamActive)
+			{
+				$('#leds_toggle_live_video').trigger('click');
+			}
+
+			// Ensure minimum dimensions for comfortable cropping
+			if ($("#live_preview_dialog").outerWidth() < 600 || $("#live_preview_dialog").outerHeight() < 500)
+			{
+				$("#live_preview_dialog").width(Math.max($("#live_preview_dialog").outerWidth(), 640));
+				$("#live_preview_dialog").height(Math.max($("#live_preview_dialog").outerHeight(), 520));
+			}
+
+			$('#live_crop_toolbar').removeClass('d-none');
+
+			// Read current crop from config
+			if (window.serverConfig && window.serverConfig.videoGrabber)
+			{
+				curCropL = window.serverConfig.videoGrabber.cropLeft || 0;
+				curCropR = window.serverConfig.videoGrabber.cropRight || 0;
+				curCropT = window.serverConfig.videoGrabber.cropTop || 0;
+				curCropB = window.serverConfig.videoGrabber.cropBottom || 0;
+			}
+			else
+			{
+				curCropL = curCropR = curCropT = curCropB = 0;
+			}
+
+			backupCrop = { l: curCropL, t: curCropT, r: curCropR, b: curCropB };
+
+			// Temporarily send crop 0 to engine so user sees the uncropped live feed with handles at current crop
+			if (curCropL > 0 || curCropR > 0 || curCropT > 0 || curCropB > 0)
+			{
+				sendToHyperhdr("video-crop", "", '"crop":{"left":0,"right":0,"top":0,"bottom":0}');
+			}
+
+			updateLedLayout();
+			renderLiveCropOverlay();
+		}
+		else
+		{
+			$('#vid_btn_crop').removeClass('btn-success').addClass('btn-warning');
+			$('#live_crop_toolbar').addClass('d-none');
+			$('#live_video_crop_overlay').remove();
+			updateLedLayout();
+		}
+	}
+
+	function renderLiveCropOverlay()
+	{
+		if (!liveCropActive)
+		{
+			$('#live_video_crop_overlay').remove();
+			return;
+		}
+
+		var res = getNativeGrabberResolution();
+		var nativeW = res.width;
+		var nativeH = res.height;
+
+		var cw = canvas_width;
+		var ch = canvas_height;
+
+		var x1 = (curCropL / nativeW) * cw;
+		var y1 = (curCropT / nativeH) * ch;
+		var x2 = ((nativeW - curCropR) / nativeW) * cw;
+		var y2 = ((nativeH - curCropB) / nativeH) * ch;
+
+		var rectW = Math.max(0, x2 - x1);
+		var rectH = Math.max(0, y2 - y1);
+
+		var midX = (x1 + x2) / 2;
+		var midY = (y1 + y2) / 2;
+
+		$('#live_crop_txt_l').text(curCropL);
+		$('#live_crop_txt_t').text(curCropT);
+		$('#live_crop_txt_r').text(curCropR);
+		$('#live_crop_txt_b').text(curCropB);
+		$('#live_crop_txt_size').text((nativeW - curCropL - curCropR) + 'x' + (nativeH - curCropT - curCropB) + ' / ' + nativeW + 'x' + nativeH);
+
+		var maskPath = `M 0 0 L ${cw} 0 L ${cw} ${ch} L 0 ${ch} Z M ${x1} ${y1} L ${x1} ${y2} L ${x2} ${y2} L ${x2} ${y1} Z`;
+
+		if ($('#live_video_crop_overlay').length === 0)
+		{
+			var overlayHtml = `
+			<div id="live_video_crop_overlay" class="hyperhdr-crop-overlay" style="z-index: 100000;">
+				<svg id="live_crop_svg" class="hyperhdr-crop-svg" width="${cw}" height="${ch}">
+					<path id="live_crop_mask" d="${maskPath}" fill="rgba(0, 0, 0, 0.52)" fill-rule="evenodd" />
+					<rect id="live_crop_rect" x="${x1}" y="${y1}" width="${rectW}" height="${rectH}" fill="rgba(0, 210, 255, 0.05)" stroke="#00d2ff" stroke-width="2.5" stroke-dasharray="6,4" />
+				</svg>
+				<div class="hyperhdr-crop-handle hyperhdr-crop-handle-corner" id="live_handle_tl" style="left:${x1}px; top:${y1}px;" data-handle="tl" title="Top-Left Corner">TL</div>
+				<div class="hyperhdr-crop-handle hyperhdr-crop-handle-corner" id="live_handle_tr" style="left:${x2}px; top:${y1}px;" data-handle="tr" title="Top-Right Corner">TR</div>
+				<div class="hyperhdr-crop-handle hyperhdr-crop-handle-corner" id="live_handle_br" style="left:${x2}px; top:${y2}px;" data-handle="br" title="Bottom-Right Corner">BR</div>
+				<div class="hyperhdr-crop-handle hyperhdr-crop-handle-corner" id="live_handle_bl" style="left:${x1}px; top:${y2}px;" data-handle="bl" title="Bottom-Left Corner">BL</div>
+				<div class="hyperhdr-crop-handle hyperhdr-crop-handle-edge-h" id="live_handle_et" style="left:${midX}px; top:${y1}px;" data-handle="edge-t" title="Drag top edge"></div>
+				<div class="hyperhdr-crop-handle hyperhdr-crop-handle-edge-v" id="live_handle_er" style="left:${x2}px; top:${midY}px;" data-handle="edge-r" title="Drag right edge"></div>
+				<div class="hyperhdr-crop-handle hyperhdr-crop-handle-edge-h" id="live_handle_eb" style="left:${midX}px; top:${y2}px;" data-handle="edge-b" title="Drag bottom edge"></div>
+				<div class="hyperhdr-crop-handle hyperhdr-crop-handle-edge-v" id="live_handle_el" style="left:${x1}px; top:${midY}px;" data-handle="edge-l" title="Drag left edge"></div>
+				<div class="hyperhdr-crop-handle hyperhdr-crop-handle-center" id="live_handle_center" style="left:${midX}px; top:${midY}px;" data-handle="center" title="Pan crop box">
+					<svg data-src="svg/button_move.svg" style="width:14px;height:14px;" fill="currentColor" class="svg4hyperhdr"></svg>
+				</div>
+				<div id="live_crop_tooltip" class="hyperhdr-crop-tooltip d-none"></div>
+			</div>`;
+			$('#leds_canvas').append(overlayHtml);
+			bindLiveCropOverlayEvents();
+		}
+		else
+		{
+			$('#live_crop_svg').attr({ width: cw, height: ch });
+			$('#live_crop_mask').attr('d', maskPath);
+			$('#live_crop_rect').attr({ x: x1, y: y1, width: rectW, height: rectH });
+			$('#live_handle_tl').css({ left: x1 + 'px', top: y1 + 'px' });
+			$('#live_handle_tr').css({ left: x2 + 'px', top: y1 + 'px' });
+			$('#live_handle_br').css({ left: x2 + 'px', top: y2 + 'px' });
+			$('#live_handle_bl').css({ left: x1 + 'px', top: y2 + 'px' });
+			$('#live_handle_et').css({ left: midX + 'px', top: y1 + 'px' });
+			$('#live_handle_er').css({ left: x2 + 'px', top: midY + 'px' });
+			$('#live_handle_eb').css({ left: midX + 'px', top: y2 + 'px' });
+			$('#live_handle_el').css({ left: x1 + 'px', top: midY + 'px' });
+			$('#live_handle_center').css({ left: midX + 'px', top: midY + 'px' });
+		}
+	}
+
+	function bindLiveCropOverlayEvents()
+	{
+		var activeHandle = null;
+		var startPointer = { x: 0, y: 0 };
+		var startCrop = {};
+
+		$('#live_video_crop_overlay .hyperhdr-crop-handle').off('pointerdown').on('pointerdown', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			activeHandle = $(this).data('handle');
+			startPointer = { x: e.clientX, y: e.clientY };
+			startCrop = { l: curCropL, t: curCropT, r: curCropR, b: curCropB };
+
+			isDraggingLiveCrop = true;
+			$(this).addClass('active');
+
+			if (this.setPointerCapture) {
+				this.setPointerCapture(e.pointerId);
+			}
+
+			$('#live_crop_tooltip').removeClass('d-none');
+		});
+
+		$('#live_video_crop_overlay .hyperhdr-crop-handle').off('pointermove').on('pointermove', function(e) {
+			if (!isDraggingLiveCrop || !activeHandle) return;
+
+			e.preventDefault();
+			e.stopPropagation();
+
+			var res = getNativeGrabberResolution();
+			var nativeW = res.width;
+			var nativeH = res.height;
+
+			var scaleX = nativeW / canvas_width;
+			var scaleY = nativeH / canvas_height;
+
+			var deltaPxX = (e.clientX - startPointer.x) * scaleX;
+			var deltaPxY = (e.clientY - startPointer.y) * scaleY;
+
+			var step2 = function(val, maxVal) {
+				var v = Math.round(val / 2) * 2;
+				return Math.max(0, Math.min(maxVal - 4, v));
+			};
+
+			var tooltipText = "";
+
+			if (activeHandle === 'tl')
+			{
+				curCropL = step2(startCrop.l + deltaPxX, nativeW - startCrop.r);
+				curCropT = step2(startCrop.t + deltaPxY, nativeH - startCrop.b);
+				tooltipText = `Left: ${curCropL}px, Top: ${curCropT}px`;
+			}
+			else if (activeHandle === 'tr')
+			{
+				curCropR = step2(startCrop.r - deltaPxX, nativeW - startCrop.l);
+				curCropT = step2(startCrop.t + deltaPxY, nativeH - startCrop.b);
+				tooltipText = `Right: ${curCropR}px, Top: ${curCropT}px`;
+			}
+			else if (activeHandle === 'br')
+			{
+				curCropR = step2(startCrop.r - deltaPxX, nativeW - startCrop.l);
+				curCropB = step2(startCrop.b - deltaPxY, nativeH - startCrop.t);
+				tooltipText = `Right: ${curCropR}px, Bottom: ${curCropB}px`;
+			}
+			else if (activeHandle === 'bl')
+			{
+				curCropL = step2(startCrop.l + deltaPxX, nativeW - startCrop.r);
+				curCropB = step2(startCrop.b - deltaPxY, nativeH - startCrop.t);
+				tooltipText = `Left: ${curCropL}px, Bottom: ${curCropB}px`;
+			}
+			else if (activeHandle === 'edge-t')
+			{
+				curCropT = step2(startCrop.t + deltaPxY, nativeH - startCrop.b);
+				tooltipText = `Top: ${curCropT}px`;
+			}
+			else if (activeHandle === 'edge-b')
+			{
+				curCropB = step2(startCrop.b - deltaPxY, nativeH - startCrop.t);
+				tooltipText = `Bottom: ${curCropB}px`;
+			}
+			else if (activeHandle === 'edge-l')
+			{
+				curCropL = step2(startCrop.l + deltaPxX, nativeW - startCrop.r);
+				tooltipText = `Left: ${curCropL}px`;
+			}
+			else if (activeHandle === 'edge-r')
+			{
+				curCropR = step2(startCrop.r - deltaPxX, nativeW - startCrop.l);
+				tooltipText = `Right: ${curCropR}px`;
+			}
+			else if (activeHandle === 'center')
+			{
+				var cropW = nativeW - startCrop.l - startCrop.r;
+				var cropH = nativeH - startCrop.t - startCrop.b;
+
+				var newL = step2(startCrop.l + deltaPxX, nativeW - cropW);
+				var newT = step2(startCrop.t + deltaPxY, nativeH - cropH);
+
+				curCropL = newL;
+				curCropR = nativeW - cropW - newL;
+				curCropT = newT;
+				curCropB = nativeH - cropH - newT;
+
+				tooltipText = `Pan: L:${curCropL}px, T:${curCropT}px`;
+			}
+
+			var rectCanvas = document.getElementById("leds_canvas").getBoundingClientRect();
+			var tipX = e.clientX - rectCanvas.left;
+			var tipY = e.clientY - rectCanvas.top;
+			$('#live_crop_tooltip').text(tooltipText).css({ left: tipX + 'px', top: tipY + 'px' });
+
+			renderLiveCropOverlay();
+		});
+
+		var endLiveDrag = function(e) {
+			if (isDraggingLiveCrop) {
+				isDraggingLiveCrop = false;
+				activeHandle = null;
+				$('.hyperhdr-crop-handle').removeClass('active');
+				$('#live_crop_tooltip').addClass('d-none');
+			}
+		};
+
+		$('#live_video_crop_overlay .hyperhdr-crop-handle').off('pointerup pointercancel').on('pointerup pointercancel', endLiveDrag);
+	}
+
+	$('#btn_crop_apply').off().on('click', function() {
+		sendToHyperhdr("video-crop", "", '"crop":{"left":' + curCropL + ',"right":' + curCropR + ',"top":' + curCropT + ',"bottom":' + curCropB + '}');
+		showNotification('info', `Applied live crop: Left=${curCropL}px, Top=${curCropT}px, Right=${curCropR}px, Bottom=${curCropB}px`, $.i18n('main_ledsim_btn_cropvideo'));
+	});
+
+	$('#btn_crop_save').off().on('click', function() {
+		sendToHyperhdr("video-crop", "", '"crop":{"left":' + curCropL + ',"right":' + curCropR + ',"top":' + curCropT + ',"bottom":' + curCropB + '}');
+		requestWriteConfig({
+			"videoGrabber": {
+				"cropLeft": curCropL,
+				"cropRight": curCropR,
+				"cropTop": curCropT,
+				"cropBottom": curCropB
+			}
+		});
+		backupCrop = { l: curCropL, t: curCropT, r: curCropR, b: curCropB };
+		if (typeof conf_video_section_editor !== 'undefined' && conf_video_section_editor)
+		{
+			try {
+				conf_video_section_editor.getEditor('root.videoGrabber.cropLeft').setValue(curCropL);
+				conf_video_section_editor.getEditor('root.videoGrabber.cropRight').setValue(curCropR);
+				conf_video_section_editor.getEditor('root.videoGrabber.cropTop').setValue(curCropT);
+				conf_video_section_editor.getEditor('root.videoGrabber.cropBottom').setValue(curCropB);
+			} catch(e) {}
+		}
+		showNotification('success', 'Saved crop settings to Grabber configuration!', $.i18n('main_ledsim_btn_cropvideo'));
+	});
+
+	$('#btn_crop_reset').off().on('click', function() {
+		curCropL = curCropR = curCropT = curCropB = 0;
+		renderLiveCropOverlay();
+		sendToHyperhdr("video-crop", "", '"crop":{"left":0,"right":0,"top":0,"bottom":0}');
+	});
+
+	$('#btn_crop_close').off().on('click', function() {
+		if (backupCrop) {
+			sendToHyperhdr("video-crop", "", '"crop":{"left":' + backupCrop.l + ',"right":' + backupCrop.r + ',"top":' + backupCrop.t + ',"bottom":' + backupCrop.b + '}');
+		}
+		toggleLiveVideoCrop();
+	});
+
+	window.startLivePreviewCrop = function() {
+		if (dialog == null || typeof dialog === 'undefined')
+			getReady();
+		dialog.open();
+		if (!liveCropActive)
+			toggleLiveVideoCrop();
+	};
+
 	function updateLedLayout()
 	{
-		canvas_height = $('#live_preview_dialog').outerHeight()-$('[data-role=footer]').outerHeight()-$('[data-role=header]').outerHeight()-20;
+		var toolbarHeight = (liveCropActive && $('#live_crop_toolbar').is(':visible')) ? $('#live_crop_toolbar').outerHeight() : 0;
+		canvas_height = $('#live_preview_dialog').outerHeight()-$('[data-role=footer]').outerHeight()-$('[data-role=header]').outerHeight()-toolbarHeight-20;
 		canvas_width = $('#live_preview_dialog').outerWidth()-20;
 
 		$('#leds_canvas').html("");
 		var leds_html = '<canvas id="image_preview_canv" width="'+canvas_width+'" height="'+canvas_height+'"  style="position: absolute; left: 0; top: 0; z-index: 99998;"></canvas>';
 		leds_html += '<canvas id="leds_preview_canv" width="'+canvas_width+'" height="'+canvas_height+'"  style="position: absolute; left: 0; top: 0; z-index: 99999;"></canvas>';
+		leds_html += '<div id="live_video_crop_overlay" class="hyperhdr-crop-overlay" style="z-index: 100000; display: ' + (liveCropActive ? 'block' : 'none') + ';"></div>';
 
 		$('#leds_canvas').html(leds_html);
 
@@ -331,6 +651,10 @@ $(document).ready(function() {
 		create2dPaths();
 		printLedsToCanvas();
 		resetImage();
+		if (liveCropActive)
+		{
+			renderLiveCropOverlay();
+		}
 	};
 
 
@@ -350,7 +674,7 @@ $(document).ready(function() {
 
 
 	$(window.hyperhdr).on("cmd-image-stream-frame",function(event){
-		if (!modalOpened)
+		if (!modalOpened && !window.ledPreviewImageActive)
 		{
 			requestLedImageStop();
 		}
@@ -362,7 +686,11 @@ $(document).ready(function() {
 			var image = new Image();
 
 			image.onload = function() {
-			    imageCanvasNodeCtx.drawImage(image, 0, 0, canvas_width, canvas_height);
+				window.lastImageStreamFrameWidth = image.naturalWidth;
+				window.lastImageStreamFrameHeight = image.naturalHeight;
+				if (imageCanvasNodeCtx) {
+					imageCanvasNodeCtx.drawImage(image, 0, 0, canvas_width, canvas_height);
+				}
 			};			
 
 			var urlCreator = window.URL || window.webkitURL;

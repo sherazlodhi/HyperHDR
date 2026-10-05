@@ -1156,3 +1156,273 @@ function handleLightMode()
 	$('#btn_darkmode_moon_icon').removeClass('d-none');
 	$('#btn_darkmode_sun_icon').addClass('d-none');
 }
+
+function round(number)
+{
+	var factor = Math.pow(10, 4);
+	var tempNumber = number * factor;
+	var roundedTempNumber = Math.round(tempNumber);
+	return roundedTempNumber / factor;
+}
+
+function createClassicLedLayoutSimple(ledstop, ledsleft, ledsright, ledsbottom, position, groupX, groupY, reverse)
+{
+	var params = {
+		ledstop: 0,
+		ledsbottom: 0,
+		ledsleft: 0,
+		ledsright: 0,
+		ledsglength: 0,
+		ledsgpos: 0,
+		position: 0,
+		groupX: 0,
+		groupY: 0,
+		reverse: false,
+		ledsVDepth: 0.05,
+		ledsHDepth: 0.08,
+		edgeVGap: 0,
+		overlap: 0,
+		ptblh: 0,
+		ptblv: 1,
+		ptbrh: 1,
+		ptbrv: 1,
+		pttlh: 0,
+		pttlv: 0,
+		pttrh: 1,
+		pttrv: 0
+	};
+
+	params.ledstop = ledstop;
+	params.ledsleft = ledsleft;
+	params.ledsright = ledsright;
+	params.ledsbottom = ledsbottom;
+	params.position = position;
+	params.groupX = groupX;
+	params.groupY = groupY;
+	params.reverse = reverse;
+
+	return createClassicLedLayout(params);
+}
+
+function createClassicLedLayout(params)
+{
+	var edgeHGap = params.edgeVGap / (16 / 9);
+	var ledArray = [];
+
+	function createFinalArray(array)
+	{
+		var finalLedArray = [];
+		for (var i = 0; i < array.length; i++)
+		{
+			var hmin = array[i].hmin;
+			var hmax = array[i].hmax;
+			var vmin = array[i].vmin;
+			var vmax = array[i].vmax;
+			var group = array[i].group;
+			finalLedArray[i] = {
+				"hmax": hmax,
+				"hmin": hmin,
+				"vmax": vmax,
+				"vmin": vmin,
+				"group": group
+			};
+		}
+		return finalLedArray;
+	}
+
+	function rotateArray(array, times)
+	{
+		if (times > 0)
+		{
+			while (times--)
+			{
+				array.push(array.shift());
+			}
+			return array;
+		}
+		else
+		{
+			while (times++)
+			{
+				array.unshift(array.pop());
+			}
+			return array;
+		}
+	}
+
+	function valScan(val)
+	{
+		if (val > 1) return 1;
+		if (val < 0) return 0;
+		return val;
+	}
+
+	function ovl(scan, val)
+	{
+		if (scan == "+")
+			return valScan(val += params.overlap);
+		else
+			return valScan(val -= params.overlap);
+	}
+
+	function createLedArray(hmin, hmax, vmin, vmax, group)
+	{
+		hmin = round(hmin);
+		hmax = round(hmax);
+		vmin = round(vmin);
+		vmax = round(vmax);
+		ledArray.push({
+			"hmin": hmin,
+			"hmax": hmax,
+			"vmin": vmin,
+			"vmax": vmax,
+			"group": group
+		});
+	}
+
+	function createTopLeds(groupStart)
+	{
+		var steph = (params.pttrh - params.pttlh - (2 * edgeHGap)) / params.ledstop;
+		var stepv = (params.pttrv - params.pttlv) / params.ledstop;
+		var maxGroup = 0;
+		for (var i = 0; i < params.ledstop; i++)
+		{
+			var hmin = ovl("-", params.pttlh + (steph * Number([i])) + edgeHGap);
+			var hmax = ovl("+", params.pttlh + (steph * Number([i + 1])) + edgeHGap);
+			var vmin = params.pttlv + (stepv * Number([i]));
+			var vmax = vmin + params.ledsHDepth;
+			if (params.groupX > 0 && (params.groupX * 2 <= params.ledstop))
+			{
+				var group = Math.floor(((i * params.groupX) / params.ledstop)) + 1;
+				maxGroup = Math.max(maxGroup, group);
+				createLedArray(hmin, hmax, vmin, vmax, group + groupStart);
+			}
+			else
+				createLedArray(hmin, hmax, vmin, vmax, 0);
+		}
+		return maxGroup + groupStart;
+	}
+
+	function createRightLeds(groupStart)
+	{
+		var steph = (params.ptbrh - params.pttrh) / params.ledsright;
+		var stepv = (params.ptbrv - params.pttrv - (2 * params.edgeVGap)) / params.ledsright;
+		var maxGroup = 0;
+		for (var i = 0; i < params.ledsright; i++)
+		{
+			var hmax = params.pttrh + (steph * Number([i + 1]));
+			var hmin = hmax - params.ledsVDepth;
+			var vmin = ovl("-", params.pttrv + (stepv * Number([i])) + params.edgeVGap);
+			var vmax = ovl("+", params.pttrv + (stepv * Number([i + 1])) + params.edgeVGap);
+			if (params.groupY > 0 && (params.groupY * 2 <= params.ledsright))
+			{
+				var group = Math.floor(((i * params.groupY) / params.ledsright)) + 1;
+				maxGroup = Math.max(maxGroup, group);
+				createLedArray(hmin, hmax, vmin, vmax, group + groupStart);
+			}			
+			else
+				createLedArray(hmin, hmax, vmin, vmax, 0);
+		}
+		return maxGroup + groupStart;
+	}
+
+	function createBottomLeds(groupStart)
+	{
+		var steph = (params.ptbrh - params.ptblh - (2 * edgeHGap)) / params.ledsbottom;
+		var stepv = (params.ptbrv - params.ptblv) / params.ledsbottom;
+		var maxGroup = 0;
+		for (var i = params.ledsbottom - 1; i > -1; i--)
+		{
+			var hmin = ovl("-", params.ptblh + (steph * Number([i])) + edgeHGap);
+			var hmax = ovl("+", params.ptblh + (steph * Number([i + 1])) + edgeHGap);
+			var vmax = params.ptblv + (stepv * Number([i]));
+			var vmin = vmax - params.ledsHDepth;
+			if (params.groupX > 0 && (params.groupX * 2 <= params.ledsbottom))
+			{
+				var group = Math.floor(((i * params.groupX) / params.ledsbottom)) + 1;
+				maxGroup = Math.max(maxGroup, group);
+				createLedArray(hmin, hmax, vmin, vmax, group + groupStart);
+			}
+			else
+				createLedArray(hmin, hmax, vmin, vmax, 0);
+		}
+		return maxGroup + groupStart;
+	}
+
+	function createLeftLeds(groupStart)
+	{
+		var steph = (params.ptblh - params.pttlh) / params.ledsleft;
+		var stepv = (params.ptblv - params.pttlv - (2 * params.edgeVGap)) / params.ledsleft;
+		var maxGroup = 0;
+		for (var i = params.ledsleft - 1; i > -1; i--)
+		{
+			var hmin = params.pttlh + (steph * Number([i]));
+			var hmax = hmin + params.ledsVDepth;
+			var vmin = ovl("-", params.pttlv + (stepv * Number([i])) + params.edgeVGap);
+			var vmax = ovl("+", params.pttlv + (stepv * Number([i + 1])) + params.edgeVGap);
+			if (params.groupY > 0 && (params.groupY * 2 <= params.ledsleft))
+			{
+				var group = Math.floor(((i * params.groupY) / params.ledsleft)) + 1;
+				maxGroup = Math.max(maxGroup, group);
+				createLedArray(hmin, hmax, vmin, vmax, group + groupStart);
+			}
+			else
+				createLedArray(hmin, hmax, vmin, vmax, 0);
+		}
+		return maxGroup + groupStart;
+	}
+
+	var groupIndex = 0;
+	groupIndex = createTopLeds(groupIndex);
+	groupIndex = createRightLeds(groupIndex);
+	groupIndex = createBottomLeds(groupIndex);
+	groupIndex = createLeftLeds(groupIndex);
+
+	if (params.ledsgpos + params.ledsglength > ledArray.length)
+	{
+		var mpos = Math.max(0, ledArray.length - params.ledsglength);
+		params.ledsgpos = mpos;
+	}
+	if (params.ledsglength >= ledArray.length)
+	{
+		params.ledsglength = ledArray.length - params.ledsglength - 1;
+	}
+	if (params.ledsglength != 0)
+	{
+		ledArray.splice(params.ledsgpos, params.ledsglength);
+	}
+	if (params.position != 0)
+	{
+		rotateArray(ledArray, params.position);
+	}
+	if (params.reverse)
+		ledArray.reverse();
+
+	return createFinalArray(ledArray);
+}
+
+function getNativeGrabberResolution()
+{
+	if (window.serverInfo && window.serverInfo.grabbers && window.serverInfo.grabbers.current && window.serverInfo.grabbers.current.videoMode)
+	{
+		var parts = window.serverInfo.grabbers.current.videoMode.split("x");
+		if (parts.length === 2 && !isNaN(parseInt(parts[0])) && !isNaN(parseInt(parts[1])))
+		{
+			return { width: parseInt(parts[0]), height: parseInt(parts[1]) };
+		}
+	}
+	if (window.serverConfig && window.serverConfig.videoGrabber && window.serverConfig.videoGrabber.videoMode && window.serverConfig.videoGrabber.videoMode !== "auto")
+	{
+		var parts2 = window.serverConfig.videoGrabber.videoMode.split("x");
+		if (parts2.length === 2 && !isNaN(parseInt(parts2[0])) && !isNaN(parseInt(parts2[1])))
+		{
+			return { width: parseInt(parts2[0]), height: parseInt(parts2[1]) };
+		}
+	}
+	if (window.lastImageStreamFrameWidth && window.lastImageStreamFrameHeight)
+	{
+		return { width: window.lastImageStreamFrameWidth, height: window.lastImageStreamFrameHeight };
+	}
+	return { width: 1920, height: 1080 };
+}
+

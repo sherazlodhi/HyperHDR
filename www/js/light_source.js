@@ -62,6 +62,287 @@ async function deviceListRefresh(ledTypeTarget, discoveryResult, targetDiscovery
 	});			
 }
 
+var _boundaryOverlayActive = true;
+var _isDraggingBoundary = false;
+
+function renderBoundaryOverlay()
+{
+	if (_lastOrigin !== "classic" || !_boundaryOverlayActive)
+	{
+		$('#leds_boundary_overlay').remove();
+		$('#crop_boundary_banner').addClass('d-none').removeClass('d-flex');
+		return;
+	}
+
+	$('#crop_boundary_banner').removeClass('d-none').addClass('d-flex');
+
+	var canvas_height = $('#leds_preview').innerHeight();
+	var canvas_width = $('#leds_preview').innerWidth();
+
+	if (canvas_width <= 0 || canvas_height <= 0)
+		return;
+
+	// Ensure background video canvas exists if live video is active
+	if (window.ledPreviewImageActive)
+	{
+		if ($('#leds_preview_bg_video').length === 0)
+		{
+			$('#leds_preview').prepend('<canvas id="leds_preview_bg_video" width="' + canvas_width + '" height="' + canvas_height + '" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 0; border-radius: 2px;"></canvas>');
+		}
+	}
+	else
+	{
+		$('#leds_preview_bg_video').remove();
+	}
+
+	// Read points from inputs
+	var pttlh = parseFloat($("#ip_cl_ptlh").val());
+	var pttlv = parseFloat($("#ip_cl_ptlv").val());
+	var pttrh = parseFloat($("#ip_cl_ptrh").val());
+	var pttrv = parseFloat($("#ip_cl_ptrv").val());
+	var ptbrh = parseFloat($("#ip_cl_pbrh").val());
+	var ptbrv = parseFloat($("#ip_cl_pbrv").val());
+	var ptblh = parseFloat($("#ip_cl_pblh").val());
+	var ptblv = parseFloat($("#ip_cl_pblv").val());
+
+	if (isNaN(pttlh)) pttlh = 0;
+	if (isNaN(pttlv)) pttlv = 0;
+	if (isNaN(pttrh)) pttrh = 100;
+	if (isNaN(pttrv)) pttrv = 0;
+	if (isNaN(ptbrh)) ptbrh = 100;
+	if (isNaN(ptbrv)) ptbrv = 100;
+	if (isNaN(ptblh)) ptblh = 0;
+	if (isNaN(ptblv)) ptblv = 100;
+
+	$('#crop_boundary_badge').text(`TL: ${pttlh}%, ${pttlv}% | BR: ${ptbrh}%, ${ptbrv}%`);
+
+	var tl_x = (pttlh / 100) * canvas_width;
+	var tl_y = (pttlv / 100) * canvas_height;
+	var tr_x = (pttrh / 100) * canvas_width;
+	var tr_y = (pttrv / 100) * canvas_height;
+	var br_x = (ptbrh / 100) * canvas_width;
+	var br_y = (ptbrv / 100) * canvas_height;
+	var bl_x = (ptblh / 100) * canvas_width;
+	var bl_y = (ptblv / 100) * canvas_height;
+
+	var top_mid_x = (tl_x + tr_x) / 2;
+	var top_mid_y = (tl_y + tr_y) / 2;
+	var right_mid_x = (tr_x + br_x) / 2;
+	var right_mid_y = (tr_y + br_y) / 2;
+	var bottom_mid_x = (bl_x + br_x) / 2;
+	var bottom_mid_y = (bl_y + br_y) / 2;
+	var left_mid_x = (tl_x + bl_x) / 2;
+	var left_mid_y = (tl_y + bl_y) / 2;
+	var center_x = (tl_x + tr_x + br_x + bl_x) / 4;
+	var center_y = (tl_y + tr_y + br_y + bl_y) / 4;
+
+	var maskPath = `M 0 0 L ${canvas_width} 0 L ${canvas_width} ${canvas_height} L 0 ${canvas_height} Z M ${tl_x} ${tl_y} L ${bl_x} ${bl_y} L ${br_x} ${br_y} L ${tr_x} ${tr_y} Z`;
+	var polyPoints = `${tl_x},${tl_y} ${tr_x},${tr_y} ${br_x},${br_y} ${bl_x},${bl_y}`;
+
+	if ($('#leds_boundary_overlay').length === 0)
+	{
+		var overlayHtml = `
+		<div id="leds_boundary_overlay" class="hyperhdr-crop-overlay" style="z-index: 10;">
+			<svg id="leds_boundary_svg" class="hyperhdr-crop-svg" width="${canvas_width}" height="${canvas_height}">
+				<path id="leds_boundary_mask" d="${maskPath}" fill="rgba(0, 0, 0, 0.42)" fill-rule="evenodd" />
+				<polygon id="leds_boundary_poly" points="${polyPoints}" fill="rgba(0, 210, 255, 0.05)" stroke="#00d2ff" stroke-width="2.5" stroke-dasharray="6,4" />
+			</svg>
+			<div class="hyperhdr-crop-handle hyperhdr-crop-handle-corner" id="leds_handle_tl" style="left:${tl_x}px; top:${tl_y}px;" data-handle="tl" title="Point Top Left">TL</div>
+			<div class="hyperhdr-crop-handle hyperhdr-crop-handle-corner" id="leds_handle_tr" style="left:${tr_x}px; top:${tr_y}px;" data-handle="tr" title="Point Top Right">TR</div>
+			<div class="hyperhdr-crop-handle hyperhdr-crop-handle-corner" id="leds_handle_br" style="left:${br_x}px; top:${br_y}px;" data-handle="br" title="Point Bottom Right">BR</div>
+			<div class="hyperhdr-crop-handle hyperhdr-crop-handle-corner" id="leds_handle_bl" style="left:${bl_x}px; top:${bl_y}px;" data-handle="bl" title="Point Bottom Left">BL</div>
+			<div class="hyperhdr-crop-handle hyperhdr-crop-handle-edge-h" id="leds_handle_et" style="left:${top_mid_x}px; top:${top_mid_y}px;" data-handle="edge-t" title="Drag top edge"></div>
+			<div class="hyperhdr-crop-handle hyperhdr-crop-handle-edge-v" id="leds_handle_er" style="left:${right_mid_x}px; top:${right_mid_y}px;" data-handle="edge-r" title="Drag right edge"></div>
+			<div class="hyperhdr-crop-handle hyperhdr-crop-handle-edge-h" id="leds_handle_eb" style="left:${bottom_mid_x}px; top:${bottom_mid_y}px;" data-handle="edge-b" title="Drag bottom edge"></div>
+			<div class="hyperhdr-crop-handle hyperhdr-crop-handle-edge-v" id="leds_handle_el" style="left:${left_mid_x}px; top:${left_mid_y}px;" data-handle="edge-l" title="Drag left edge"></div>
+			<div class="hyperhdr-crop-handle hyperhdr-crop-handle-center" id="leds_handle_center" style="left:${center_x}px; top:${center_y}px;" data-handle="center" title="Pan entire boundary">
+				<svg data-src="svg/button_move.svg" style="width:14px;height:14px;" fill="currentColor" class="svg4hyperhdr"></svg>
+			</div>
+			<div id="leds_crop_tooltip" class="hyperhdr-crop-tooltip d-none"></div>
+		</div>`;
+		$('#leds_preview').append(overlayHtml);
+		bindBoundaryOverlayEvents();
+	}
+	else
+	{
+		$('#leds_boundary_svg').attr({ width: canvas_width, height: canvas_height });
+		$('#leds_boundary_mask').attr('d', maskPath);
+		$('#leds_boundary_poly').attr('points', polyPoints);
+		$('#leds_handle_tl').css({ left: tl_x + 'px', top: tl_y + 'px' });
+		$('#leds_handle_tr').css({ left: tr_x + 'px', top: tr_y + 'px' });
+		$('#leds_handle_br').css({ left: br_x + 'px', top: br_y + 'px' });
+		$('#leds_handle_bl').css({ left: bl_x + 'px', top: bl_y + 'px' });
+		$('#leds_handle_et').css({ left: top_mid_x + 'px', top: top_mid_y + 'px' });
+		$('#leds_handle_er').css({ left: right_mid_x + 'px', top: right_mid_y + 'px' });
+		$('#leds_handle_eb').css({ left: bottom_mid_x + 'px', top: bottom_mid_y + 'px' });
+		$('#leds_handle_el').css({ left: left_mid_x + 'px', top: left_mid_y + 'px' });
+		$('#leds_handle_center').css({ left: center_x + 'px', top: center_y + 'px' });
+	}
+}
+
+function bindBoundaryOverlayEvents()
+{
+	var activeHandle = null;
+	var startPointer = { x: 0, y: 0 };
+	var startCoords = {};
+
+	$('#leds_boundary_overlay .hyperhdr-crop-handle').off('pointerdown').on('pointerdown', function(e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		activeHandle = $(this).data('handle');
+		startPointer = { x: e.clientX, y: e.clientY };
+
+		startCoords = {
+			tl_h: parseFloat($("#ip_cl_ptlh").val()) || 0,
+			tl_v: parseFloat($("#ip_cl_ptlv").val()) || 0,
+			tr_h: parseFloat($("#ip_cl_ptrh").val()) || 100,
+			tr_v: parseFloat($("#ip_cl_ptrv").val()) || 0,
+			br_h: parseFloat($("#ip_cl_pbrh").val()) || 100,
+			br_v: parseFloat($("#ip_cl_pbrv").val()) || 100,
+			bl_h: parseFloat($("#ip_cl_pblh").val()) || 0,
+			bl_v: parseFloat($("#ip_cl_pblv").val()) || 100
+		};
+
+		_isDraggingBoundary = true;
+		$(this).addClass('active');
+
+		if (this.setPointerCapture) {
+			this.setPointerCapture(e.pointerId);
+		}
+
+		$('#leds_crop_tooltip').removeClass('d-none');
+	});
+
+	$('#leds_boundary_overlay .hyperhdr-crop-handle').off('pointermove').on('pointermove', function(e) {
+		if (!_isDraggingBoundary || !activeHandle) return;
+
+		e.preventDefault();
+		e.stopPropagation();
+
+		var previewEl = document.getElementById("leds_preview");
+		if (!previewEl) return;
+		var rect = previewEl.getBoundingClientRect();
+		var deltaPercentX = ((e.clientX - startPointer.x) / rect.width) * 100;
+		var deltaPercentY = ((e.clientY - startPointer.y) / rect.height) * 100;
+
+		var clamp = function(val) { return Math.max(0, Math.min(100, Math.round(val))); };
+
+		var tooltipText = "";
+		var targetPos = { x: 0, y: 0 };
+
+		if (activeHandle === 'tl')
+		{
+			var nH = clamp(startCoords.tl_h + deltaPercentX);
+			var nV = clamp(startCoords.tl_v + deltaPercentY);
+			$("#ip_cl_ptlh").val(nH);
+			$("#ip_cl_ptlv").val(nV);
+			tooltipText = `Top-Left: ${nH}%, ${nV}%`;
+			targetPos = { x: (nH / 100) * rect.width, y: (nV / 100) * rect.height };
+		}
+		else if (activeHandle === 'tr')
+		{
+			var nH = clamp(startCoords.tr_h + deltaPercentX);
+			var nV = clamp(startCoords.tr_v + deltaPercentY);
+			$("#ip_cl_ptrh").val(nH);
+			$("#ip_cl_ptrv").val(nV);
+			tooltipText = `Top-Right: ${nH}%, ${nV}%`;
+			targetPos = { x: (nH / 100) * rect.width, y: (nV / 100) * rect.height };
+		}
+		else if (activeHandle === 'br')
+		{
+			var nH = clamp(startCoords.br_h + deltaPercentX);
+			var nV = clamp(startCoords.br_v + deltaPercentY);
+			$("#ip_cl_pbrh").val(nH);
+			$("#ip_cl_pbrv").val(nV);
+			tooltipText = `Bottom-Right: ${nH}%, ${nV}%`;
+			targetPos = { x: (nH / 100) * rect.width, y: (nV / 100) * rect.height };
+		}
+		else if (activeHandle === 'bl')
+		{
+			var nH = clamp(startCoords.bl_h + deltaPercentX);
+			var nV = clamp(startCoords.bl_v + deltaPercentY);
+			$("#ip_cl_pblh").val(nH);
+			$("#ip_cl_pblv").val(nV);
+			tooltipText = `Bottom-Left: ${nH}%, ${nV}%`;
+			targetPos = { x: (nH / 100) * rect.width, y: (nV / 100) * rect.height };
+		}
+		else if (activeHandle === 'edge-t')
+		{
+			var nV1 = clamp(startCoords.tl_v + deltaPercentY);
+			var nV2 = clamp(startCoords.tr_v + deltaPercentY);
+			$("#ip_cl_ptlv").val(nV1);
+			$("#ip_cl_ptrv").val(nV2);
+			tooltipText = `Top Edge: ${nV1}%`;
+			targetPos = { x: ((startCoords.tl_h + startCoords.tr_h) / 200) * rect.width, y: (nV1 / 100) * rect.height };
+		}
+		else if (activeHandle === 'edge-b')
+		{
+			var nV1 = clamp(startCoords.bl_v + deltaPercentY);
+			var nV2 = clamp(startCoords.br_v + deltaPercentY);
+			$("#ip_cl_pblv").val(nV1);
+			$("#ip_cl_pbrv").val(nV2);
+			tooltipText = `Bottom Edge: ${nV1}%`;
+			targetPos = { x: ((startCoords.bl_h + startCoords.br_h) / 200) * rect.width, y: (nV1 / 100) * rect.height };
+		}
+		else if (activeHandle === 'edge-l')
+		{
+			var nH1 = clamp(startCoords.tl_h + deltaPercentX);
+			var nH2 = clamp(startCoords.bl_h + deltaPercentX);
+			$("#ip_cl_ptlh").val(nH1);
+			$("#ip_cl_pblh").val(nH2);
+			tooltipText = `Left Edge: ${nH1}%`;
+			targetPos = { x: (nH1 / 100) * rect.width, y: ((startCoords.tl_v + startCoords.bl_v) / 200) * rect.height };
+		}
+		else if (activeHandle === 'edge-r')
+		{
+			var nH1 = clamp(startCoords.tr_h + deltaPercentX);
+			var nH2 = clamp(startCoords.br_h + deltaPercentX);
+			$("#ip_cl_ptrh").val(nH1);
+			$("#ip_cl_pbrh").val(nH2);
+			tooltipText = `Right Edge: ${nH1}%`;
+			targetPos = { x: (nH1 / 100) * rect.width, y: ((startCoords.tr_v + startCoords.br_v) / 200) * rect.height };
+		}
+		else if (activeHandle === 'center')
+		{
+			var minDX = -Math.min(startCoords.tl_h, startCoords.bl_h);
+			var maxDX = 100 - Math.max(startCoords.tr_h, startCoords.br_h);
+			var minDY = -Math.min(startCoords.tl_v, startCoords.tr_v);
+			var maxDY = 100 - Math.max(startCoords.bl_v, startCoords.br_v);
+
+			var dX = Math.max(minDX, Math.min(maxDX, deltaPercentX));
+			var dY = Math.max(minDY, Math.min(maxDY, deltaPercentY));
+
+			$("#ip_cl_ptlh").val(clamp(startCoords.tl_h + dX));
+			$("#ip_cl_ptlv").val(clamp(startCoords.tl_v + dY));
+			$("#ip_cl_ptrh").val(clamp(startCoords.tr_h + dX));
+			$("#ip_cl_ptrv").val(clamp(startCoords.tr_v + dY));
+			$("#ip_cl_pbrh").val(clamp(startCoords.br_h + dX));
+			$("#ip_cl_pbrv").val(clamp(startCoords.br_v + dY));
+			$("#ip_cl_pblh").val(clamp(startCoords.bl_h + dX));
+			$("#ip_cl_pblv").val(clamp(startCoords.bl_v + dY));
+
+			tooltipText = `Pan: ΔX ${Math.round(dX)}%, ΔY ${Math.round(dY)}%`;
+			targetPos = { x: (e.clientX - rect.left), y: (e.clientY - rect.top) };
+		}
+
+		$('#leds_crop_tooltip').text(tooltipText).css({ left: targetPos.x + 'px', top: targetPos.y + 'px' });
+
+		createClassicLeds();
+	});
+
+	var endDrag = function(e) {
+		if (_isDraggingBoundary) {
+			_isDraggingBoundary = false;
+			activeHandle = null;
+			$('.hyperhdr-crop-handle').removeClass('active');
+			$('#leds_crop_tooltip').addClass('d-none');
+		}
+	};
+
+	$('#leds_boundary_overlay .hyperhdr-crop-handle').off('pointerup pointercancel').on('pointerup pointercancel', endDrag);
+}
+
 function createLedPreview(leds, origin)
 {
 	_lastLeds = leds;
@@ -140,7 +421,28 @@ function createLedPreview(leds, origin)
 	if (disabledLed)
 		leds_html += '<div data-i18n="conf_leds_layout_frame" style="position: absolute; text-align: center; left: ' + (0.2 * canvas_width) + 'px; top: ' + (0.55 * canvas_height) + 'px; width: ' + (0.6 * canvas_width) + 'px;">'+$.i18n('conf_leds_disabled_notification')+'</div>';
 	
-	$('#leds_preview').html(leds_html);
+	if ($('#leds_divs_container').length === 0)
+	{
+		var baseStructure = `
+			<canvas id="leds_preview_bg_video" width="${canvas_width}" height="${canvas_height}" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 0; display: ${window.ledPreviewImageActive ? 'block' : 'none'}; border-radius: 2px;"></canvas>
+			<div id="leds_divs_container" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 1;"></div>
+			<div id="leds_boundary_overlay" class="hyperhdr-crop-overlay" style="z-index: 10; display: ${(origin === 'classic' && _boundaryOverlayActive) ? 'block' : 'none'};"></div>
+		`;
+		$('#leds_preview').html(baseStructure);
+	}
+	else
+	{
+		var bgCanv = document.getElementById("leds_preview_bg_video");
+		if (bgCanv)
+		{
+			bgCanv.width = canvas_width;
+			bgCanv.height = canvas_height;
+			$(bgCanv).css('display', window.ledPreviewImageActive ? 'block' : 'none');
+		}
+		$('#leds_boundary_overlay').css('display', (origin === 'classic' && _boundaryOverlayActive) ? 'block' : 'none');
+	}
+
+	$('#leds_divs_container').html(leds_html);
 
 	//first LEDs
 	var colors = ["rgba(0,0,0,0.8)", "rgba(128,128,128,0.8)", "rgba(169,169,169,0.8)"];
@@ -166,6 +468,17 @@ function createLedPreview(leds, origin)
 
 	if ($('#leds_prev_toggle_num').hasClass('btn-success'))
 		$('.led_prev_num').css("display", "inline");
+
+	// update boundary overlay
+	if (origin === 'classic')
+	{
+		renderBoundaryOverlay();
+	}
+	else
+	{
+		$('#leds_boundary_overlay').hide();
+		$('#crop_boundary_banner').addClass('d-none').removeClass('d-flex');
+	}
 
 	// update ace Editor content
 	aceEdt.set(finalLedArray);
@@ -977,6 +1290,69 @@ $(document).ready(function()
 	{
 		$('.led_prev_num').toggle();
 		toggleClass('#leds_prev_toggle_num', "btn-danger", "btn-success");
+	});
+
+	$('#leds_prev_toggle_boundary').off().on("click", function()
+	{
+		_boundaryOverlayActive = !_boundaryOverlayActive;
+		if (_boundaryOverlayActive)
+		{
+			$(this).removeClass('btn-secondary').addClass('btn-info');
+		}
+		else
+		{
+			$(this).removeClass('btn-info').addClass('btn-secondary');
+		}
+		renderBoundaryOverlay();
+	});
+
+	$('#leds_prev_toggle_live_video').off().on("click", function()
+	{
+		window.ledPreviewImageActive = !window.ledPreviewImageActive;
+		if (window.ledPreviewImageActive)
+		{
+			$(this).removeClass('btn-secondary').addClass('btn-success');
+			$('#leds_prev_video_text').text('Stop Video');
+			requestLedImageStart();
+		}
+		else
+		{
+			$(this).removeClass('btn-success').addClass('btn-secondary');
+			$('#leds_prev_video_text').text($.i18n('conf_leds_layout_btn_live_video'));
+			if (typeof modalOpened === 'undefined' || !modalOpened)
+			{
+				requestLedImageStop();
+			}
+			$('#leds_preview_bg_video').remove();
+		}
+		createClassicLeds();
+	});
+
+	$('#leds_prev_reset_boundary').off().on("click", function()
+	{
+		$("#ip_cl_ptlh").val(0);
+		$("#ip_cl_ptlv").val(0);
+		$("#ip_cl_ptrh").val(100);
+		$("#ip_cl_ptrv").val(0);
+		$("#ip_cl_pbrh").val(100);
+		$("#ip_cl_pbrv").val(100);
+		$("#ip_cl_pblh").val(0);
+		$("#ip_cl_pblv").val(100);
+		createClassicLeds();
+	});
+
+	$(window.hyperhdr).off("cmd-image-stream-frame.light_source").on("cmd-image-stream-frame.light_source", function(event)
+	{
+		if (!window.ledPreviewImageActive) return;
+		var bgCanvas = document.getElementById("leds_preview_bg_video");
+		if (!bgCanvas) return;
+		var ctx = bgCanvas.getContext("2d");
+		var img = new Image();
+		img.onload = function() {
+			ctx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
+		};
+		var urlCreator = window.URL || window.webkitURL;
+		img.src = urlCreator.createObjectURL(event.response);
 	});
 
 	var _backupLastOrigin;

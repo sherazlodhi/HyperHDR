@@ -350,6 +350,22 @@
 
 				<!-- ledsimDialog -->
 				<div id="live_preview_dialog" style="display: none; z-index: 9998;">
+					<div id="live_crop_toolbar" class="hyperhdr-crop-toolbar d-none">
+						<div class="d-flex align-items-center flex-wrap gap-2">
+							<span class="badge bg-warning text-dark"><svg data-src="svg/button_edit.svg" style="width:12px;" fill="currentColor" class="svg4hyperhdr"></svg> Crop Video</span>
+							<span>L: <b id="live_crop_txt_l" class="text-info">0</b>px</span>
+							<span>T: <b id="live_crop_txt_t" class="text-info">0</b>px</span>
+							<span>R: <b id="live_crop_txt_r" class="text-info">0</b>px</span>
+							<span>B: <b id="live_crop_txt_b" class="text-info">0</b>px</span>
+							<span class="text-muted ms-1">(<span id="live_crop_txt_size">1920x1080</span>)</span>
+						</div>
+						<div class="d-flex align-items-center gap-1">
+							<button type="button" class="btn btn-sm btn-primary py-0 px-2" id="btn_crop_apply" title="Apply crop directly to capture card"><span data-i18n="main_ledsim_crop_apply">Apply Live</span></button>
+							<button type="button" class="btn btn-sm btn-success py-0 px-2" id="btn_crop_save" title="Save crop to grabber settings"><span data-i18n="main_ledsim_crop_save">Save</span></button>
+							<button type="button" class="btn btn-sm btn-secondary py-0 px-2" id="btn_crop_reset" title="Reset crop to 0"><span data-i18n="main_ledsim_crop_reset">Reset (0)</span></button>
+							<button type="button" class="btn btn-sm btn-outline-light py-0 px-2" id="btn_crop_close"><span data-i18n="main_ledsim_crop_done">Done</span></button>
+						</div>
+					</div>
 					<div data-role="body" style="padding: 0px;">
 						<div id="leds_canvas"></div>
 					</div>
@@ -357,6 +373,7 @@
 						<button type="button" class="btn btn-success btn-sm" id="leds_toggle"><svg data-src="svg/button_bulb.svg" style="width:14px;" fill="currentColor" class="svg4hyperhdr"></svg><span id="vid_btn_1">Show LEDs</span></button>
 						<button type="button" class="btn btn-danger btn-sm" id="leds_toggle_num"><svg data-src="svg/light_source_show_numbers.svg" style="width:14px;" fill="currentColor" class="svg4hyperhdr"></svg><span id="vid_btn_2">LEDs number</span></button>
 						<button type="button" class="btn btn-danger btn-sm" id="leds_toggle_live_video"><svg data-src="svg/button_play.svg" style="width:14px;" fill="currentColor" class="svg4hyperhdr"></svg><span id="vid_btn_3">Live video</span></button>
+						<button type="button" class="btn btn-warning btn-sm" id="vid_btn_crop"><svg data-src="svg/button_edit.svg" style="width:14px;" fill="currentColor" class="svg4hyperhdr"></svg><span id="vid_btn_5">Crop Video</span></button>
 						<button type="button" class="btn btn-info btn-sm" id="leds_screenshot"><svg data-src="svg/button_download.svg" style="width:14px;" fill="currentColor" class="svg4hyperhdr"></svg><span id="vid_btn_4">Screenshot</span></button>
 					</div>
 				</div>
