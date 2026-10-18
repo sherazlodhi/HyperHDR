@@ -1,0 +1,326 @@
+# HyperHDR + WLED Ambilight Automations (Isolated)
+
+- id: "hyperhdr_auto_music_mode_start"
+  alias: "HyperHDR: Switch to Music Mode on Speaker Playback"
+  description: "Switches backlight to Music visualizer mode when speakers start playing"
+  triggers:
+    - trigger: state
+      entity_id:
+        - media_player.family_speaker
+        - media_player.kitchen_speaker
+        - media_player.sara_ghar
+        - media_player.everywhere
+        - media_player.home_echo_dot
+        - media_player.m5stack_atom_echo
+        - media_player.speed_camera
+        - media_player.living_room_tv_192_168_87_252
+        - media_player.ytube_music_player
+      to: "playing"
+  conditions:
+    - condition: template
+      value_template: >
+        {# Start music mode only if TV is off or in standby (preserving TV screen mirroring if TV is on) #}
+        {{ states("media_player.family_room_tv_2") in ["off", "standby", "unavailable"] and
+           states("remote.family_room_tv_2") in ["off", "standby", "unavailable"] }}
+  actions:
+    - action: script.set_music_mode
+  mode: restart
+
+- id: "hyperhdr_auto_music_mode_stop"
+  alias: "HyperHDR: Restore TV Mode when Music Stops"
+  description: "Restores TV camera tracking if TV is on, or turns off LEDs if TV is off"
+  triggers:
+    - trigger: state
+      entity_id:
+        - media_player.family_speaker
+        - media_player.kitchen_speaker
+        - media_player.sara_ghar
+        - media_player.everywhere
+        - media_player.home_echo_dot
+        - media_player.m5stack_atom_echo
+        - media_player.speed_camera
+        - media_player.living_room_tv_192_168_87_252
+        - media_player.ytube_music_player
+      from: "playing"
+      for: "00:00:30"
+  conditions:
+    - condition: template
+      value_template: >
+        {{ not is_state("media_player.family_speaker", "playing") and
+           not is_state("media_player.kitchen_speaker", "playing") and
+           not is_state("media_player.sara_ghar", "playing") and
+           not is_state("media_player.everywhere", "playing") and
+           not is_state("media_player.home_echo_dot", "playing") and
+           not is_state("media_player.m5stack_atom_echo", "playing") and
+           not is_state("media_player.speed_camera", "playing") and
+           not is_state("media_player.living_room_tv_192_168_87_252", "playing") and
+           not is_state("media_player.ytube_music_player", "playing") }}
+  actions:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: >
+                {{ states("media_player.family_room_tv_2") in ["on", "idle", "playing"] or
+                   states("remote.family_room_tv_2") in ["on"] }}
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ "aerialviews" in (state_attr("media_player.family_room_tv_2", "app_id") | default("") | lower) }}
+                  sequence:
+                    - action: script.set_aerialviews_ambient_mode
+              default:
+                - action: script.set_tv_video_mode
+      default:
+        - action: script.set_leds_default_yellow
+  mode: restart
+
+- id: "hyperhdr_auto_turn_on_with_tv"
+  alias: "TV Ambient: Turn ON Effects when TV Turns ON"
+  description: "Activates TV screen tracking / effects when TV turns on"
+  triggers:
+    - trigger: state
+      entity_id:
+        - media_player.family_room_tv_2
+        - remote.family_room_tv_2
+      to:
+        - "on"
+        - "playing"
+  conditions: []
+  actions:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: >
+                {{ "aerialviews" in (state_attr("media_player.family_room_tv_2", "app_id") | default("") | lower) }}
+          sequence:
+            - action: script.set_aerialviews_ambient_mode
+      default:
+        - action: script.set_tv_video_mode
+  mode: restart
+
+- id: "hyperhdr_auto_turn_off_with_tv"
+  alias: "TV Ambient: Turn Off LEDs or Switch to Music when TV Turns OFF"
+  description: "Turns off LEDs when TV turns off unless music is playing on any speaker"
+  triggers:
+    - trigger: state
+      entity_id:
+        - media_player.family_room_tv_2
+        - remote.family_room_tv_2
+      to:
+        - "off"
+        - "standby"
+  conditions: []
+  actions:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: >
+                {{ is_state("media_player.family_speaker", "playing") or
+                   is_state("media_player.kitchen_speaker", "playing") or
+                   is_state("media_player.sara_ghar", "playing") or
+                   is_state("media_player.everywhere", "playing") or
+                   is_state("media_player.home_echo_dot", "playing") or
+                   is_state("media_player.m5stack_atom_echo", "playing") or
+                   is_state("media_player.speed_camera", "playing") or
+                   is_state("media_player.living_room_tv_192_168_87_252", "playing") or
+                   is_state("media_player.ytube_music_player", "playing") }}
+          sequence:
+            - action: script.set_music_mode
+      default:
+        - action: script.set_leds_default_yellow
+  mode: restart
+
+- id: "hyperhdr_aerialviews_ambient_mode"
+  alias: "TV Ambient: AerialViews Low Power Mode"
+  description: "Sets LEDs to low power & stops video streaming when AerialViews screensaver is running"
+  triggers:
+    - trigger: state
+      entity_id: media_player.family_room_tv_2
+      attribute: app_id
+    - trigger: state
+      entity_id: input_select.aerialviews_led_style
+  conditions:
+    - condition: template
+      value_template: >
+        {{ states("media_player.family_room_tv_2") in ["on", "idle", "playing"] or
+           states("remote.family_room_tv_2") in ["on"] }}
+  actions:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: >
+                {{ "aerialviews" in (state_attr("media_player.family_room_tv_2", "app_id") | default("") | lower) }}
+          sequence:
+            - action: script.set_aerialviews_ambient_mode
+      default:
+        - action: script.set_tv_video_mode
+  mode: restart
+
+- id: sync_screensaver_brightness_to_proxy
+  alias: Sync Screensaver LED Brightness
+  description: Updates HyperHDR palette proxy screensaver brightness when slider is adjusted
+  triggers:
+  - trigger: state
+    entity_id: input_number.ambient_screensaver_brightness
+  actions:
+  - action: rest_command.proxy_set_brightness
+    data:
+      brightness: "{{ states('input_number.ambient_screensaver_brightness') | int }}"
+  mode: restart
+
+- id: sync_screensaver_edge_balance_to_proxy
+  alias: Sync Screensaver Edge Balance
+  description: Updates HyperHDR palette proxy edge balance weights when edge sliders are adjusted
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_number.screensaver_bottom_brightness
+    - input_number.screensaver_sides_brightness
+    - input_number.screensaver_top_brightness
+  actions:
+  - action: rest_command.proxy_set_edge_balance
+    data:
+      top: "{{ (states('input_number.screensaver_top_brightness') | float(100)) / 100.0 }}"
+      sides: "{{ (states('input_number.screensaver_sides_brightness') | float(70)) / 100.0 }}"
+      bottom: "{{ (states('input_number.screensaver_bottom_brightness') | float(45)) / 100.0 }}"
+  mode: restart
+
+- id: aerialviews_auto_turn_off_after_20_mins
+  alias: "TV Ambient: Auto Turn Off after 20 Mins Screensaver"
+  description: "Turns off the TV and backlight when AerialViews screensaver has run for 20 minutes continuously"
+  triggers:
+    - trigger: template
+      value_template: >
+        {{ 'aerialviews' in (state_attr('media_player.family_room_tv_2', 'app_id') | string | lower) and
+           states('media_player.family_room_tv_2') in ['on', 'idle', 'playing'] }}
+      for:
+        minutes: 20
+  conditions:
+    - condition: template
+      value_template: >
+        {{ 'aerialviews' in (state_attr('media_player.family_room_tv_2', 'app_id') | string | lower) and
+           states('media_player.family_room_tv_2') in ['on', 'idle', 'playing'] }}
+  actions:
+    - action: remote.turn_off
+      target:
+        entity_id: remote.family_room_tv_2
+    - action: media_player.turn_off
+      target:
+        entity_id: media_player.family_room_tv_2
+    - action: light.turn_off
+      target:
+        entity_id: light.wled
+    - action: switch.turn_off
+      target:
+        entity_id: switch.hyperhdr_camera_grabber
+  mode: single
+
+- id: sync_music_mic_sensitivity_to_proxy
+  alias: Sync Music Mic Sensitivity
+  description: Updates C310 mic capture volume when mic sensitivity slider is adjusted
+  triggers:
+  - trigger: state
+    entity_id: input_number.music_mic_sensitivity
+  actions:
+  - action: rest_command.proxy_set_mic_sensitivity
+    data:
+      value: "{{ states('input_number.music_mic_sensitivity') | int(75) }}"
+  mode: restart
+
+- id: wled_return_to_yellow_when_all_off
+  alias: "LEDs: Return to Default Yellow when TV and Media Players Off"
+  description: "When both TV and media players are off, LEDs return to default yellow without HyperHDR to save network and energy"
+  triggers:
+    - trigger: state
+      entity_id:
+        - media_player.family_room_tv_2
+        - remote.family_room_tv_2
+      to:
+        - "off"
+        - "standby"
+    - trigger: state
+      entity_id:
+        - media_player.family_speaker
+        - media_player.kitchen_speaker
+        - media_player.sara_ghar
+        - media_player.everywhere
+        - media_player.home_echo_dot
+        - media_player.m5stack_atom_echo
+        - media_player.speed_camera
+        - media_player.living_room_tv_192_168_87_252
+        - media_player.ytube_music_player
+      from: "playing"
+      for: "00:00:03"
+  conditions:
+    - condition: template
+      value_template: >
+        {# TV and remote must be off/standby/unavailable #}
+        {{ states("media_player.family_room_tv_2") in ["off", "standby", "unavailable"] and
+           states("remote.family_room_tv_2") in ["off", "standby", "unavailable"] }}
+    - condition: template
+      value_template: >
+        {# No media player is currently playing #}
+        {{ not is_state("media_player.family_speaker", "playing") and
+           not is_state("media_player.kitchen_speaker", "playing") and
+           not is_state("media_player.sara_ghar", "playing") and
+           not is_state("media_player.everywhere", "playing") and
+           not is_state("media_player.home_echo_dot", "playing") and
+           not is_state("media_player.m5stack_atom_echo", "playing") and
+           not is_state("media_player.speed_camera", "playing") and
+           not is_state("media_player.living_room_tv_192_168_87_252", "playing") and
+           not is_state("media_player.ytube_music_player", "playing") }}
+  actions:
+    - action: script.set_leds_default_yellow
+  mode: restart
+
+- id: "hyperhdr_live_change_music_style"
+  alias: "HyperHDR: Change Music Visualizer Style Live"
+  description: "Live updates active HyperHDR music/ambient effect when dropdown changes on Dashboard"
+  triggers:
+    - trigger: state
+      entity_id: input_select.music_visualizer_style
+  conditions:
+    - condition: template
+      value_template: >
+        {# Apply live whenever TV is off/standby OR music mode/speakers are active #}
+        {{ (states("media_player.family_room_tv_2") in ["off", "standby", "unavailable"] and
+            states("remote.family_room_tv_2") in ["off", "standby", "unavailable"]) or
+           state_attr("sensor.camera_primary_colors", "mode") == "music" or
+           is_state("media_player.family_speaker", "playing") or
+           is_state("media_player.kitchen_speaker", "playing") or
+           is_state("media_player.sara_ghar", "playing") or
+           is_state("media_player.everywhere", "playing") or
+           is_state("media_player.home_echo_dot", "playing") or
+           is_state("media_player.m5stack_atom_echo", "playing") or
+           is_state("media_player.speed_camera", "playing") or
+           is_state("media_player.living_room_tv_192_168_87_252", "playing") or
+           is_state("media_player.ytube_music_player", "playing") }}
+  actions:
+    - action: script.set_music_mode
+  mode: restart
+
+- id: "sync_tv_primary_color_mode_to_proxy"
+  alias: "Sync TV Primary Color Mode"
+  description: "Toggles primary color quantization mode on HyperHDR palette proxy"
+  triggers:
+    - trigger: state
+      entity_id: input_boolean.tv_primary_color_mode
+  actions:
+    - action: rest_command.proxy_set_primary_mode
+      data:
+        value: "{{ states('input_boolean.tv_primary_color_mode') }}"
+  mode: restart
+
+- id: "sync_ambilight_border_mode_to_proxy"
+  alias: "Sync Screensaver Border vs Dominant Mode"
+  description: "Toggles Screensaver Border Mode on the proxy without disturbing TV or Music mode"
+  triggers:
+    - trigger: state
+      entity_id: input_boolean.ambilight_border_mode
+  actions:
+    - action: rest_command.proxy_set_screensaver_border
+      data:
+        value: "{{ states('input_boolean.ambilight_border_mode') }}"
+  mode: restart

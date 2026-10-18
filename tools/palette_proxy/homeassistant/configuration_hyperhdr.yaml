@@ -1,0 +1,291 @@
+# HyperHDR + WLED Ambilight Configuration Snippet for Home Assistant
+# Merge these sections into your Home Assistant configuration.yaml
+
+rest_command:
+  hyperhdr_enable_usb_capture:
+    url: "http://192.168.87.2:8090/json-rpc"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "token <YOUR_HYPERHDR_API_TOKEN>"
+    payload: '{"command":"componentstate","componentstate":{"component":"VIDEOGRABBER","state":true}}'
+
+  hyperhdr_disable_usb_capture:
+    url: "http://192.168.87.2:8090/json-rpc"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "token <YOUR_HYPERHDR_API_TOKEN>"
+    payload: '{"command":"componentstate","componentstate":{"component":"VIDEOGRABBER","state":false}}'
+
+  hyperhdr_enable_led_device:
+    url: "http://192.168.87.2:8090/json-rpc"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "token <YOUR_HYPERHDR_API_TOKEN>"
+    payload: '{"command":"componentstate","componentstate":{"component":"LEDDEVICE","state":true}}'
+
+  hyperhdr_disable_led_device:
+    url: "http://192.168.87.2:8090/json-rpc"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "token <YOUR_HYPERHDR_API_TOKEN>"
+    payload: '{"command":"componentstate","componentstate":{"component":"LEDDEVICE","state":false}}'
+
+  hyperhdr_set_brightness:
+    url: "http://192.168.87.2:8090/json-rpc"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "token <YOUR_HYPERHDR_API_TOKEN>"
+    payload: '{"command":"adjustment","adjustment":{"brightness":{{ brightness | default(100) | int }}}}'
+
+  hyperhdr_restore_brightness:
+    url: "http://192.168.87.2:8090/json-rpc"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "token <YOUR_HYPERHDR_API_TOKEN>"
+    payload: '{"command":"adjustment","adjustment":{"brightness":100}}'
+
+  hyperhdr_start_music_effect:
+    url: "http://192.168.87.2:8090/json-rpc"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "token <YOUR_HYPERHDR_API_TOKEN>"
+    payload: >-
+      {% set style_map = {
+        'Quatro 4-Zone (Multi-Color)': 'Music: quatro for LED strip (MULTI COLOR)',
+        'Quatro 4-Zone (Multi-Color Fast)': 'Music: quatro for LED strip (MULTI COLOR FAST)',
+        'Quatro 4-Zone (Multi-Color Slow)': 'Music: quatro for LED strip (MULTI COLOR SLOW)',
+        'Quatro 4-Zone (Blue)': 'Music: quatro for LED strip (BLUE)',
+        'Quatro 4-Zone (Green)': 'Music: quatro for LED strip (GREEN)',
+        'Quatro 4-Zone (Red)': 'Music: quatro for LED strip (RED)',
+        'Quatro 4-Zone (White)': 'Music: quatro for LED strip (WHITE)',
+        'Quatro 4-Zone (Yellow)': 'Music: quatro for LED strip (YELLOW)',
+        'Stereo Left/Right (Multi-Color)': 'Music: stereo for LED strip (MULTI COLOR)',
+        'Stereo Left/Right (Multi-Color Fast)': 'Music: stereo for LED strip (MULTI COLOR FAST)',
+        'Stereo Left/Right (Multi-Color Slow)': 'Music: stereo for LED strip (MULTI COLOR SLOW)',
+        'Stereo Left/Right (Blue)': 'Music: stereo for LED strip (BLUE)',
+        'Stereo Left/Right (Green)': 'Music: stereo for LED strip (GREEN)',
+        'Stereo Left/Right (Red)': 'Music: stereo for LED strip (RED)',
+        'Stereo Left/Right (White)': 'Music: stereo for LED strip (WHITE)',
+        'Stereo Left/Right (Yellow)': 'Music: stereo for LED strip (YELLOW)',
+        'Fullscreen Pulse (Multi-Color)': 'Music: fullscreen pulse (MULTI COLOR)',
+        'Fullscreen Pulse (Multi-Color Fast)': 'Music: fullscreen pulse (MULTI COLOR FAST)',
+        'Fullscreen Pulse (Multi-Color Slow)': 'Music: fullscreen pulse (MULTI COLOR SLOW)',
+        'Fullscreen Pulse (Blue)': 'Music: fullscreen pulse (BLUE)',
+        'Fullscreen Pulse (Green)': 'Music: fullscreen pulse (GREEN)',
+        'Fullscreen Pulse (Red)': 'Music: fullscreen pulse (RED)',
+        'Fullscreen Pulse (White)': 'Music: fullscreen pulse (WHITE)',
+        'Fullscreen Pulse (Yellow)': 'Music: fullscreen pulse (YELLOW)',
+        'Pulse Waves (Multi-Color)': 'Music: pulse waves for LED strip (MULTI COLOR)',
+        'Pulse Waves (Multi-Color Fast)': 'Music: pulse waves for LED strip (MULTI COLOR FAST)',
+        'Pulse Waves (Multi-Color Slow)': 'Music: pulse waves for LED strip (MULTI COLOR SLOW)',
+        'Equalizer Test': 'Music: equalizer test (turn on video preview)'
+      } %}
+      {% set chosen = states('input_select.music_visualizer_style') | default('Quatro 4-Zone (Multi-Color)') %}
+      {% set eff_name = style_map.get(chosen, chosen) %}
+      {"command":"effect","effect":{"name":"{{ eff_name }}"},"priority":100,"origin":"HomeAssistant"}
+
+  hyperhdr_clear_effects:
+    url: "http://192.168.87.2:8090/json-rpc"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "token <YOUR_HYPERHDR_API_TOKEN>"
+    payload: '{"command":"clear","priority":-1}'
+
+  proxy_mode_tv:
+    url: "http://192.168.87.2:5049/tv"
+    method: POST
+
+  proxy_mode_music:
+    url: "http://192.168.87.2:5049/music"
+    method: POST
+
+  proxy_mode_screensaver:
+    url: "http://192.168.87.2:5049/screensaver"
+    method: POST
+
+  proxy_mode_idle:
+    url: "http://192.168.87.2:5049/idle"
+    method: POST
+
+  proxy_restore_golden_state:
+    url: "http://192.168.87.2:5049/restore"
+    method: POST
+
+  proxy_set_brightness:
+    url: "http://192.168.87.2:5049/brightness?value={{ brightness | default(100) }}"
+    method: POST
+
+  proxy_set_mic_sensitivity:
+    url: "http://192.168.87.2:5049/mic?value={{ value | default(75) }}"
+    method: POST
+
+  proxy_set_primary_mode:
+    url: "http://192.168.87.2:5049/primary?value={{ value | default('off') }}"
+    method: POST
+
+  proxy_set_screensaver_border:
+    url: "http://192.168.87.2:5049/screensaver_border?value={{ value | default('off') }}"
+    method: POST
+
+  proxy_auto_crop:
+    url: "http://192.168.87.2:5049/auto_crop?force=1"
+    method: POST
+
+  wled_set_default_yellow:
+    url: "http://192.168.87.114/json/state"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+    payload: '{"on":true,"bri":180,"transition":7,"seg":[{"id":0,"fx":0,"col":[[255,200,0],[0,0,0],[0,0,0]]}]}'
+
+input_boolean:
+  tv_ambilight_sync:
+    name: "TV Ambilight Room Sync"
+    icon: mdi:television-ambient-light
+    initial: on
+  ambilight_border_mode:
+    name: "Screensaver Border Mode (Off = Dominant)"
+    icon: mdi:border-all-variant
+    initial: off
+  tv_primary_color_mode:
+    name: "TV Primary Color Mode"
+    icon: mdi:palette-swatch
+    initial: off
+  ipad_lock_state:
+    name: "Music Reactive Light Effects"
+    icon: mdi:palette
+    initial: on
+
+input_number:
+  ambient_screensaver_brightness:
+    name: "Screensaver Backlight Brightness"
+    min: 5
+    max: 100
+    step: 5
+    initial: 100
+    unit_of_measurement: "%"
+    icon: mdi:brightness-6
+  music_mic_sensitivity:
+    name: "Music Mic Sensitivity"
+    min: 10
+    max: 100
+    step: 5
+    initial: 75
+    unit_of_measurement: "%"
+    icon: mdi:microphone-settings
+
+input_select:
+  aerialviews_led_style:
+    name: "AerialViews Ambient Style"
+    options:
+      - "Live Camera Wash"
+      - "Soft Breathe"
+      - "Dim White"
+      - "Aurora"
+      - "Off"
+    initial: "Live Camera Wash"
+    icon: mdi:television-ambient-light
+  music_visualizer_style:
+    name: "Music Visualizer Style"
+    options:
+      - "Quatro 4-Zone (Multi-Color)"
+      - "Quatro 4-Zone (Multi-Color Fast)"
+      - "Quatro 4-Zone (Multi-Color Slow)"
+      - "Quatro 4-Zone (Blue)"
+      - "Quatro 4-Zone (Green)"
+      - "Quatro 4-Zone (Red)"
+      - "Quatro 4-Zone (White)"
+      - "Quatro 4-Zone (Yellow)"
+      - "Stereo Left/Right (Multi-Color)"
+      - "Stereo Left/Right (Multi-Color Fast)"
+      - "Stereo Left/Right (Multi-Color Slow)"
+      - "Stereo Left/Right (Blue)"
+      - "Stereo Left/Right (Green)"
+      - "Stereo Left/Right (Red)"
+      - "Stereo Left/Right (White)"
+      - "Stereo Left/Right (Yellow)"
+      - "Fullscreen Pulse (Multi-Color)"
+      - "Fullscreen Pulse (Multi-Color Fast)"
+      - "Fullscreen Pulse (Multi-Color Slow)"
+      - "Fullscreen Pulse (Blue)"
+      - "Fullscreen Pulse (Green)"
+      - "Fullscreen Pulse (Red)"
+      - "Fullscreen Pulse (White)"
+      - "Fullscreen Pulse (Yellow)"
+      - "Pulse Waves (Multi-Color)"
+      - "Pulse Waves (Multi-Color Fast)"
+      - "Pulse Waves (Multi-Color Slow)"
+      - "Equalizer Test"
+      - "Atomic swirl"
+      - "Blue mood blobs"
+      - "Breath"
+      - "Candle"
+      - "Cinema brighten lights"
+      - "Cinema dim lights"
+      - "Cold mood blobs"
+      - "Double swirl"
+      - "Full color mood blobs"
+      - "Green mood blobs"
+      - "Knight rider"
+      - "Notify blue"
+      - "Plasma"
+      - "Police Lights Single"
+      - "Police Lights Solid"
+      - "Rainbow swirl"
+      - "Rainbow swirl fast"
+      - "Rainbow waves"
+      - "Red mood blobs"
+      - "Sea waves"
+      - "Sparks"
+      - "Strobe red"
+      - "Strobe white"
+      - "System Shutdown"
+      - "Warm mood blobs"
+      - "Waves with Color"
+    initial: "Quatro 4-Zone (Multi-Color)"
+    icon: mdi:music-circle
+
+recorder:
+  exclude:
+    entities:
+      - sensor.camera_primary_colors
+      - sensor.camera_dominant_color
+
+sensor:
+  - platform: rest
+    name: "Camera Primary Colors"
+    unique_id: hyperhdr_camera_primary_colors
+    resource: "http://192.168.87.2:5049/status"
+    scan_interval: 86400
+    value_template: "{{ value_json.camera_votes_summary | default('Tap Refresh') }}"
+    json_attributes:
+      - mode
+      - latched_color
+      - dominant_camera_color
+      - votes
+      - output_rgb
+      - primary_mode
+      - auto_crop
+
+template:
+  - sensor:
+      - name: "Camera Dominant Color"
+        unique_id: hyperhdr_camera_dominant_color
+        icon: mdi:eye-outline
+        state: >
+          {% set dom = state_attr('sensor.camera_primary_colors', 'dominant_camera_color') %}
+          {% set latched = state_attr('sensor.camera_primary_colors', 'latched_color') %}
+          {% set mode = state_attr('sensor.camera_primary_colors', 'mode') %}
+          {% if dom %}
+            {{ dom }} (LED: {{ latched if mode == 'screensaver' else mode | upper }})
+          {% else %}
+            Unknown
+          {% endif %}

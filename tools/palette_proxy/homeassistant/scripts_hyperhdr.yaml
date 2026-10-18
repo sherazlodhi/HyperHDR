@@ -1,0 +1,191 @@
+# HyperHDR + WLED Ambilight Scripts (Isolated)
+
+set_tv_video_mode:
+  alias: "TV Ambient Mode"
+  description: "Turns on WLED backlight and activates TV screen tracking"
+  icon: mdi:television-play
+  sequence:
+    - action: rest_command.hyperhdr_clear_effects
+    - action: rest_command.hyperhdr_enable_led_device
+    - action: rest_command.hyperhdr_restore_brightness
+    - action: rest_command.hyperhdr_set_movie_tracking
+    - action: rest_command.hyperhdr_movie_smoothing
+    - action: rest_command.proxy_mode_tv
+    - action: light.turn_on
+      target:
+        entity_id: light.wled
+      continue_on_error: true
+    - action: rest_command.hyperhdr_enable_usb_capture
+    - action: switch.turn_on
+      target:
+        entity_id: switch.hyperhdr_camera_grabber
+  mode: restart
+
+set_music_mode:
+  alias: "Music Ambient Mode"
+  description: "Turns on WLED backlight and activates HyperHDR music/effect style selected on Dashboard"
+  icon: mdi:music-note
+  sequence:
+    - action: rest_command.hyperhdr_clear_effects
+    - action: rest_command.hyperhdr_enable_led_device
+    - action: rest_command.hyperhdr_restore_brightness
+    - action: rest_command.proxy_mode_music
+    - action: rest_command.hyperhdr_start_music_effect
+    - action: light.turn_on
+      target:
+        entity_id: light.wled
+      continue_on_error: true
+    - action: rest_command.hyperhdr_disable_usb_capture
+    - action: switch.turn_off
+      target:
+        entity_id: switch.hyperhdr_camera_grabber
+  mode: restart
+
+set_leds_default_yellow:
+  alias: "LEDs: Return to Default Yellow"
+  description: "Disables HyperHDR to save network and energy, and sets WLED to default warm yellow"
+  icon: mdi:lightbulb-outline
+  sequence:
+    - action: rest_command.hyperhdr_clear_effects
+    - action: rest_command.hyperhdr_disable_led_device
+    - action: rest_command.proxy_mode_idle
+    - action: rest_command.wled_set_default_yellow
+    - action: light.turn_on
+      target:
+        entity_id: light.wled
+      data:
+        effect: "Solid"
+        rgb_color: [255, 160, 0]
+        brightness: 40
+      continue_on_error: true
+    - action: rest_command.hyperhdr_disable_usb_capture
+    - action: switch.turn_off
+      target:
+        entity_id: switch.hyperhdr_camera_grabber
+      continue_on_error: true
+  mode: restart
+
+set_aerialviews_ambient_mode:
+  alias: "AerialViews Low Power Ambient Mode"
+  description: "Sets WLED backlight to low-power local style or subtle video tracking when AerialViews screensaver is running"
+  icon: mdi:leaf
+  sequence:
+    - action: rest_command.hyperhdr_clear_effects
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ is_state('input_select.aerialviews_led_style', 'Subtle Video Tracking') }}"
+          sequence:
+            - action: rest_command.hyperhdr_enable_led_device
+            - action: rest_command.hyperhdr_restore_brightness
+            - action: rest_command.hyperhdr_set_scene_wash
+            - action: rest_command.proxy_set_screensaver_border
+              data:
+                value: "{{ states('input_boolean.ambilight_border_mode') }}"
+            - action: rest_command.proxy_mode_screensaver
+            - action: rest_command.proxy_set_brightness
+              data:
+                brightness: "{{ states('input_number.ambient_screensaver_brightness') | default(100) | int }}"
+            - action: light.turn_on
+              target:
+                entity_id: light.wled
+            - action: rest_command.hyperhdr_enable_usb_capture
+            - action: switch.turn_on
+              target:
+                entity_id: switch.hyperhdr_camera_grabber
+        - conditions:
+            - condition: template
+              value_template: "{{ is_state('input_select.aerialviews_led_style', 'Soft Breathe') }}"
+          sequence:
+            - action: rest_command.hyperhdr_disable_usb_capture
+            - action: switch.turn_off
+              target:
+                entity_id: switch.hyperhdr_camera_grabber
+            - action: rest_command.hyperhdr_disable_led_device
+            - action: light.turn_on
+              target:
+                entity_id: light.wled
+              data:
+                brightness: 35
+                effect: "Breathe"
+                rgb_color: [255, 147, 41]
+        - conditions:
+            - condition: template
+              value_template: "{{ is_state('input_select.aerialviews_led_style', 'Dim White') }}"
+          sequence:
+            - action: rest_command.hyperhdr_disable_usb_capture
+            - action: switch.turn_off
+              target:
+                entity_id: switch.hyperhdr_camera_grabber
+            - action: rest_command.hyperhdr_disable_led_device
+            - action: light.turn_on
+              target:
+                entity_id: light.wled
+              data:
+                brightness: 25
+                effect: "Solid"
+                rgb_color: [255, 235, 210]
+        - conditions:
+            - condition: template
+              value_template: "{{ is_state('input_select.aerialviews_led_style', 'Aurora') }}"
+          sequence:
+            - action: rest_command.hyperhdr_disable_usb_capture
+            - action: switch.turn_off
+              target:
+                entity_id: switch.hyperhdr_camera_grabber
+            - action: rest_command.hyperhdr_disable_led_device
+            - action: light.turn_on
+              target:
+                entity_id: light.wled
+              data:
+                brightness: 35
+                effect: "Aurora"
+        - conditions:
+            - condition: template
+              value_template: "{{ is_state('input_select.aerialviews_led_style', 'Off') }}"
+          sequence:
+            - action: rest_command.hyperhdr_disable_usb_capture
+            - action: switch.turn_off
+              target:
+                entity_id: switch.hyperhdr_camera_grabber
+            - action: rest_command.hyperhdr_disable_led_device
+            - action: light.turn_off
+              target:
+                entity_id: light.wled
+      default:
+        - action: rest_command.hyperhdr_disable_usb_capture
+        - action: switch.turn_off
+          target:
+            entity_id: switch.hyperhdr_camera_grabber
+        - action: rest_command.hyperhdr_disable_led_device
+        - action: light.turn_on
+          target:
+            entity_id: light.wled
+          data:
+            brightness: 35
+            effect: "Solid"
+            rgb_color: [255, 147, 41]
+  mode: restart
+
+refresh_camera_colors:
+  alias: "Refresh Camera Colors"
+  description: "On-demand refresh of Camera Primary Colors sensor from HyperHDR proxy"
+  icon: mdi:refresh
+  sequence:
+    - action: homeassistant.update_entity
+      target:
+        entity_id: sensor.camera_primary_colors
+  mode: single
+
+auto_calibrate_tv_boundary:
+  alias: "Auto-Calibrate TV Boundary"
+  description: "Automatically detects the TV black bezel boundary against the wall and adjusts HyperHDR crop"
+  icon: mdi:crop-free
+  sequence:
+    - action: rest_command.proxy_auto_crop
+    - delay:
+        seconds: 1
+    - action: homeassistant.update_entity
+      target:
+        entity_id: sensor.camera_primary_colors
+  mode: single

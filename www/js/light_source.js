@@ -1276,13 +1276,34 @@ $(document).ready(function()
 			"leds": finalLedArray
 		});
 		saveValues();
+		try {
+			fetch('http://' + window.location.hostname + ':5049/save_tv_boundary', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(finalLedArray)
+			}).then(function(r) { return r.json(); }).then(function(d) {
+				console.log('TV boundary successfully synced to proxy:', d);
+			}).catch(function(e) {
+				console.warn('Could not sync TV boundary to proxy:', e);
+			});
+		} catch(err) {
+			console.warn(err);
+		}
 	});
 
 	// save led config from textfield
 	$("#leds_custom_save").off().on("click", function()
 	{
-		requestWriteConfig(JSON.parse('{"leds" :' + aceEdt.getText() + '}'));
+		var customData = JSON.parse('{"leds" :' + aceEdt.getText() + '}');
+		requestWriteConfig(customData);
 		saveValues();
+		try {
+			fetch('http://' + window.location.hostname + ':5049/save_tv_boundary', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(customData.leds)
+			}).catch(function(e) { console.warn(e); });
+		} catch(err) {}
 	});
 
 	// toggle led numbers
@@ -1339,6 +1360,31 @@ $(document).ready(function()
 		$("#ip_cl_pblh").val(0);
 		$("#ip_cl_pblv").val(100);
 		createClassicLeds();
+	});
+
+	$('#leds_prev_auto_crop').off().on("click", function()
+	{
+		var btn = $(this);
+		btn.prop('disabled', true);
+		fetch('http://' + window.location.hostname + ':5049/auto_crop?force=1', {
+			method: 'POST'
+		}).then(function(r) { return r.json(); }).then(function(d) {
+			btn.prop('disabled', false);
+			if (d && d.corners_pct) {
+				$("#ip_cl_ptlh").val(d.corners_pct.ptlh);
+				$("#ip_cl_ptlv").val(d.corners_pct.ptlv);
+				$("#ip_cl_ptrh").val(d.corners_pct.ptrh);
+				$("#ip_cl_ptrv").val(d.corners_pct.ptrv);
+				$("#ip_cl_pblh").val(d.corners_pct.pblh);
+				$("#ip_cl_pblv").val(d.corners_pct.pblv);
+				$("#ip_cl_pbrh").val(d.corners_pct.pbrh);
+				$("#ip_cl_pbrv").val(d.corners_pct.pbrv);
+				createClassicLeds();
+			}
+		}).catch(function(e) {
+			btn.prop('disabled', false);
+			console.warn('Auto-crop error:', e);
+		});
 	});
 
 	$(window.hyperhdr).off("cmd-image-stream-frame.light_source").on("cmd-image-stream-frame.light_source", function(event)
