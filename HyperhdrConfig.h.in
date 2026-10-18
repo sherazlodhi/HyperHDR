@@ -1,0 +1,104 @@
+// Generated config file
+
+// enable emmbeded web resources
+#cmakedefine USE_EMBEDDED_WEB_RESOURCES
+
+// enable shared lib loading
+#cmakedefine USE_SHARED_LIBS
+
+// support for static QT plugins
+#cmakedefine USE_STATIC_QT_PLUGINS
+
+// cec support
+#cmakedefine ENABLE_CEC
+
+// directx grabber
+#cmakedefine ENABLE_DX
+
+// framebuffer linux system grabber
+#cmakedefine ENABLE_FRAMEBUFFER
+
+// amlogic system grabber
+#cmakedefine ENABLE_AMLOGIC
+
+// macOs system grabber
+#cmakedefine ENABLE_MAC_SYSTEM
+
+// x11 linux system grabber
+#cmakedefine ENABLE_X11
+
+// PipeWire system grabber
+#cmakedefine ENABLE_PIPEWIRE
+
+// PipeWire EGL extension
+#cmakedefine ENABLE_PIPEWIRE_EGL
+
+// Define to enable sound linux
+#cmakedefine ENABLE_SOUNDCAPLINUX
+
+// Define to enable sound windows
+#cmakedefine ENABLE_SOUNDCAPWINDOWS
+
+// Define to enable sound macos
+#cmakedefine ENABLE_SOUNDCAPMACOS
+
+// Define to enable the macOS grabber
+#cmakedefine ENABLE_AVF
+
+// Define to enable the v4l2 grabber
+#cmakedefine ENABLE_V4L2
+
+// Define to enable the WMF grabber
+#cmakedefine ENABLE_MF
+
+// Define to enable the spi-device
+#cmakedefine ENABLE_SPIDEV
+
+// Define to enable the spi-ftdi-device
+#cmakedefine ENABLE_SPI_FTDI
+
+// Define to enable the ws281x-pwm-via-dma-device using jgarff's library
+#cmakedefine ENABLE_WS281XPWM
+
+// Define to enable systray control
+#cmakedefine ENABLE_SYSTRAY
+
+// Define to enable network discovery
+#cmakedefine ENABLE_BONJOUR
+
+// Define to enable MQTT network client
+#cmakedefine ENABLE_MQTT
+
+// Define to enable system qmqtt
+#cmakedefine USE_SYSTEM_MQTT_LIBS
+
+// Define to enable zstd
+#cmakedefine ENABLE_ZSTD
+
+// Define to enable protobuf
+#cmakedefine ENABLE_PROTOBUF
+
+// Define to enable system flatbuffers
+#cmakedefine USE_SYSTEM_FLATBUFFERS_LIBS
+
+// Define to enable system mbedtls
+#cmakedefine USE_SYSTEM_MBEDTLS_LIBS
+
+#cmakedefine ENABLE_POWER_MANAGEMENT
+
+#cmakedefine HYPERHDR_HAVE_DBUS
+
+#cmakedefine PORTABLE_LIB_FOLDER "@PORTABLE_LIB_FOLDER@"
+
+#cmakedefine WEB_RESOURCES_FOLDER "@WEB_RESOURCES_FOLDER@"
+
+// the hyperhdr build id string
+#define HYPERHDR_BUILD_ID "${HYPERHDR_BUILD_ID}"
+#define HYPERHDR_GIT_REMOTE "${HYPERHDR_GIT_REMOTE}"
+
+#define HYPERHDR_VERSION_MAJOR "${HYPERHDR_VERSION_MAJOR}"
+#define HYPERHDR_VERSION_MINOR "${HYPERHDR_VERSION_MINOR}"
+#define HYPERHDR_VERSION_PATCH "${HYPERHDR_VERSION_PATCH}"
+#define HYPERHDR_VERSION "${HYPERHDR_VERSION}"
+
+#define HYPERHDR_JSON_VERSION "1.0.0"

@@ -1,0 +1,38 @@
+# Define the current source locations
+SET(CURRENT_HEADER_DIR ${CMAKE_SOURCE_DIR}/include/systray)
+SET(CURRENT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/sources/systray)
+
+FILE ( GLOB SYSTRAY_SOURCES "${CURRENT_HEADER_DIR}/*.h" )
+
+if(ENABLE_SYSTRAY)
+	if(WIN32)
+		list(APPEND SYSTRAY_SOURCES ${CURRENT_SOURCE_DIR}/SystrayWindows.cpp)
+	else()
+		if(APPLE)
+			list(APPEND SYSTRAY_SOURCES ${CURRENT_SOURCE_DIR}/SystrayMacOS.mm)
+		else()
+			list(APPEND SYSTRAY_SOURCES ${CURRENT_SOURCE_DIR}/SystrayLinux.cpp)
+		endif()
+	endif()
+else()
+	list(APPEND SYSTRAY_SOURCES ${CURRENT_SOURCE_DIR}/SystrayDummy.cpp)
+endif()
+
+if (UNIX AND NOT APPLE)
+	add_library(systray-widget SHARED ${SYSTRAY_SOURCES} )
+	target_link_libraries(systray-widget PRIVATE image )
+else()
+	add_library(systray-widget ${SYSTRAY_SOURCES} )
+endif()
+
+if(ENABLE_SYSTRAY AND UNIX)
+	if(NOT APPLE)
+		target_link_libraries(systray-widget PUBLIC micro-dbus )		
+	endif()
+endif()
+
+if(APPLE)
+	if (${MACOS_MAJOR_VERSION} GREATER_EQUAL "14")
+		target_compile_definitions(systray-widget PUBLIC MACOS_VERSION_14_UP)
+	endif()
+endif()

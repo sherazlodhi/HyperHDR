@@ -1,0 +1,89 @@
+pre_install() {
+    echo "Preparing to install HyperHDR..."
+    FOUND_USR="${SUDO_USER:-${LOGNAME:-$(id -u -n)}}"
+    if pgrep hyperhdr > /dev/null 2>&1; then
+        if grep -m1 systemd /proc/1/comm > /dev/null; then
+            systemctl stop hyperhdr"@${FOUND_USR}" 2> /dev/null
+        fi
+    fi
+    killall hyperhdr 2> /dev/null
+}
+
+pre_upgrade() {
+    pre_install
+}
+
+post_install() {
+    echo "Finalizing HyperHDR setup"
+
+    NET_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{print $7}' | head -n 1)
+    [ -z "$NET_IP" ] && NET_IP=$(hostname -I 2>/dev/null | cut -d " " -f1)
+    [ -z "$NET_IP" ] && NET_IP="127.0.0.1"
+    
+    FOUND_USR="${SUDO_USER:-${LOGNAME:-$(id -u -n)}}"
+
+    ENABLE_SERVICE=0
+    STARTUP_MSG="Service is NOT enabled by default for GUI OS"
+    REBOOTMESSAGE=""
+    start_msg=""
+
+    if grep -m1 systemd /proc/1/comm > /dev/null; then
+        if [ -z "${DISPLAY}" ]; then
+            echo "Init daemon: systemd (service is enabled by default for console systems)"
+            ENABLE_SERVICE=1
+            STARTUP_MSG="HyperHDR is installed as a service and starts automatically"
+        else
+            echo "Init daemon: GUI detected (service is NOT enabled by default)"
+            ENABLE_SERVICE=0
+        fi
+
+        systemctl daemon-reload
+
+        if [ $ENABLE_SERVICE -eq 1 ]; then
+            systemctl enable --now "hyperhdr@${FOUND_USR}.service" 2>/dev/null || true
+            start_msg="systemctl start hyperhdr for user ${FOUND_USR}"
+        fi
+    else
+        echo "Warning: No systemd detected. Service management will be manual."
+    fi
+
+    echo "${start_msg}"
+
+    printf "\n +-----------------------------------------------------------------------+"
+    printf "\n |                  \033[32;1mHyperHDR has been installed/updated!\033[0m                 |"
+    printf "\n +-----------------------------------------------------------------------+"
+    printf "\n |  For configuration, visit with your browser: \033[37;1m%13s:%s\033[0m       |" "$NET_IP" "8090"
+    printf "\n |  If already used by another service try: \033[37;1m%13s:%s\033[0m           |" "$NET_IP" "8091"
+    printf "\n |  Start the service: \033[37;1msudo systemctl start hyperhdr@%-12s\033[0m        |" "$FOUND_USR"
+    printf "\n |  Stop the service: \033[37;1msudo systemctl stop hyperhdr@%-12s\033[0m          |" "$FOUND_USR"
+    printf "\n |  Troubleshooting? Run HyperHDR manually: \033[37;1m/usr/bin/hyperhdr\033[0m            |"
+    printf "\n +-----------------------------------------------------------------------+"
+    case "$STARTUP_MSG" in 
+      *"HyperHDR is installed as a service"*)
+        printf "\n |  \033[32;1m%-67s\033[0m  |" "$STARTUP_MSG";;
+      *) printf "\n |  \033[31;1m%-67s\033[0m  |" "$STARTUP_MSG"
+    esac
+    [ -z "$REBOOTMESSAGE" ] || printf "\n |  \033[31;1m%-67s\033[0m  |" "$REBOOTMESSAGE"
+    printf "\n +-----------------------------------------------------------------------+"
+    printf "\n |  Webpage: \033[36;1mhttps://hyperhdr.eu\033[0m                                         |"
+    printf "\n |  GitHub: \033[36;1mhttps://github.com/awawa-dev/HyperHDR\033[0m                        |"
+    printf "\n +-----------------------------------------------------------------------+\n"
+}
+
+post_upgrade() {
+    post_install
+}
+
+pre_remove() {
+    echo "Preparing to uninstall HyperHDR"
+    FOUND_USR="${SUDO_USER:-${LOGNAME:-$(id -u -n)}}"
+    HYPERHDR_RUNNING=false
+    pgrep hyperhdr > /dev/null 2>&1 && HYPERHDR_RUNNING=true
+
+    if grep -m1 systemd /proc/1/comm > /dev/null; then
+        $HYPERHDR_RUNNING && systemctl stop hyperhdr"@${FOUND_USR}" 2> /dev/null
+        systemctl -q disable hyperhdr"@${FOUND_USR}" 2>/dev/null
+        systemctl daemon-reload
+    fi
+    killall hyperhdr 2> /dev/null
+}

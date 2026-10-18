@@ -1,0 +1,88 @@
+#!/bin/sh
+
+echo "Finalizing HyperHDR setup"
+
+# === Podstawowe informacje systemowe ===
+if [ -f /proc/device-tree/model ] && grep -q "Raspberry Pi" /proc/device-tree/model; then
+    CPU_RPI=1
+else
+    CPU_RPI=0
+fi
+NET_IP=`hostname -I | cut -d " " -f1`
+FOUND_USR="${SUDO_USER:-${LOGNAME:-$(id -u -n)}}"
+
+ENABLE_SERVICE=0
+STARTUP_MSG="Service is NOT enabled by default for GUI OS"
+REBOOTMESSAGE=""
+
+if [ $CPU_RPI -eq 1 ]; then
+    ENABLE_SERVICE=1
+    STARTUP_MSG="HyperHDR is installed as a service and starts automatically"
+fi
+
+start_msg=""
+
+# === systemd (jedyny wspierany init) ===
+if grep -m1 systemd /proc/1/comm > /dev/null; then
+    if [ -z "${DISPLAY}" ]; then
+        echo "Init daemon: systemd (service is enabled by default for console systems)"
+        ENABLE_SERVICE=1
+        STARTUP_MSG="HyperHDR is installed as a service and starts automatically"
+    else
+        echo "Init daemon: GUI detected (service is NOT enabled by default)"
+        ENABLE_SERVICE=0
+    fi
+
+    # instalujemy szablon usługi
+    systemctl daemon-reload
+
+    if [ $ENABLE_SERVICE -eq 1 ]; then
+        systemctl enable --now "hyperhdr@${FOUND_USR}.service" 2>/dev/null || true
+        start_msg="systemctl start hyperhdr for user ${FOUND_USR}"
+    fi
+else
+    echo "Warning: No systemd detected. Service management will be manual."
+fi
+
+# === SPI dla Raspberry Pi ===
+if [ $CPU_RPI -eq 1 ]; then
+    if [ -f "/boot/firmware/config.txt" ]; then
+        BOOT_DIR="/boot/firmware"
+    else
+        BOOT_DIR="/boot"
+    fi
+
+    if [ -f "$BOOT_DIR/config.txt" ]; then
+        SPIOK=`grep '^\dtparam=spi=on' "$BOOT_DIR/config.txt" | wc -l`
+        if [ $SPIOK -ne 1 ]; then
+            echo "Raspberry Pi found – enabling SPI in $BOOT_DIR/config.txt"
+            sed -i '$a dtparam=spi=on' "$BOOT_DIR/config.txt"
+            REBOOTMESSAGE="Restart Raspberry Pi – SPI has been enabled in $BOOT_DIR/config.txt"
+        fi
+    fi
+fi
+
+echo "${start_msg}"
+
+# === Komunikaty końcowe ===
+printf "\n +-----------------------------------------------------------------------+"
+printf "\n |                 \033[32;1mHyperHDR has been installed/updated!\033[0m                  |"
+printf "\n +-----------------------------------------------------------------------+"
+printf "\n |  For configuration, visit with your browser: \033[37;1m%13s:%s\033[0m       |" "$NET_IP" "8090"
+printf "\n |  If already used by another service try: \033[37;1m%13s:%s\033[0m           |" "$NET_IP" "8091"
+printf "\n |  Start the service: \033[37;1msudo systemctl start hyperhdr@%-12s\033[0m        |" "$FOUND_USR"
+printf "\n |  Stop the service: \033[37;1msudo systemctl stop hyperhdr@%-12s\033[0m          |" "$FOUND_USR"
+printf "\n |  Troubleshooting? Run HyperHDR manually: \033[37;1m/usr/bin/hyperhdr\033[0m            |"
+printf "\n +-----------------------------------------------------------------------+"
+case "$STARTUP_MSG" in 
+  *"HyperHDR is installed as a service"*)
+	printf "\n |  \033[32;1m%-67s\033[0m  |" "$STARTUP_MSG";;
+  *) printf "\n |  \033[31;1m%-67s\033[0m  |" "$STARTUP_MSG"
+esac
+[ -z "$REBOOTMESSAGE" ] || printf "\n |  \033[31;1m%-67s\033[0m  |" "$REBOOTMESSAGE"
+printf "\n +-----------------------------------------------------------------------+"
+printf "\n |  Webpage: \033[36;1mhttps://hyperhdr.eu\033[0m                                         |"
+printf "\n |  GitHub: \033[36;1mhttps://github.com/awawa-dev/HyperHDR\033[0m                        |"
+printf "\n +-----------------------------------------------------------------------+\n"
+
+exit 0

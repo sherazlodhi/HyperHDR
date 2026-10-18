@@ -1,0 +1,257 @@
+/* DriverSpiHyperSPI.cpp
+*
+*  MIT License
+*
+*  Copyright (c) 2020-2026 awawa-dev
+*
+*  Project homesite: https://github.com/awawa-dev/HyperHDR
+*
+*  Permission is hereby granted, free of charge, to any person obtaining a copy
+*  of this software and associated documentation files (the "Software"), to deal
+*  in the Software without restriction, including without limitation the rights
+*  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+*  copies of the Software, and to permit persons to whom the Software is
+*  furnished to do so, subject to the following conditions:
+*
+*  The above copyright notice and this permission notice shall be included in all
+*  copies or substantial portions of the Software.
+
+*  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+*  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+*  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+*  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+*  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+*  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+*  SOFTWARE.
+ */
+
+#include <led-drivers/spi/DriverSpiHyperSPI.h>
+#include <infinite-color-engine/ColorSpace.h>
+#include <QtEndian>
+
+DriverSpiHyperSPI::DriverSpiHyperSPI(const QJsonObject& deviceConfig)
+	: ProviderSpi(deviceConfig)
+	, _headerSize(6)
+	, _enable_ice_rgbw(false)
+	, _ice_white_temperatur{ 1.0f, 1.0f, 1.0f }
+	, _ice_white_mixer_threshold(0.0f)
+	, _ice_white_led_intensity(1.8f)
+	, _white_channel_calibration(false)
+	, _white_channel_limit(255)
+	, _white_channel_red(255)
+	, _white_channel_green(255)
+	, _white_channel_blue(255)
+{
+}
+
+bool DriverSpiHyperSPI::init(QJsonObject deviceConfig)
+{
+	bool isInitOK = false;
+
+	// Initialise sub-class
+	if (ProviderSpi::init(deviceConfig))
+	{
+		_enable_ice_rgbw = deviceConfig["enable_ice_rgbw"].toBool(false);
+		_ice_white_mixer_threshold = deviceConfig["ice_white_mixer_threshold"].toDouble(0.0);
+		_ice_white_led_intensity = deviceConfig["ice_white_led_intensity"].toDouble(1.8);
+		_ice_white_temperatur.x = deviceConfig["ice_white_temperatur_red"].toDouble(1.0);
+		_ice_white_temperatur.y = deviceConfig["ice_white_temperatur_green"].toDouble(1.0);
+		_ice_white_temperatur.z = deviceConfig["ice_white_temperatur_blue"].toDouble(1.0);
+		Debug(_log, "Infinite Color Engine RGBW is: {:s}, white channel temp for the white LED: {:s}, white mixer threshold: {:f}, white LED intensity: {:f}",
+			((_enable_ice_rgbw) ? "enabled" : "disabled"), ColorSpaceMath::vecToString(_ice_white_temperatur), _ice_white_mixer_threshold, _ice_white_led_intensity);
+
+		_white_channel_calibration = deviceConfig["white_channel_calibration"].toBool(false);
+		_white_channel_limit = qMin(qRound(deviceConfig["white_channel_limit"].toDouble(1) * 255.0 / 100.0), 255);
+		_white_channel_red = qMin(deviceConfig["white_channel_red"].toInt(255), 255);
+		_white_channel_green = qMin(deviceConfig["white_channel_green"].toInt(255), 255);
+		_white_channel_blue = qMin(deviceConfig["white_channel_blue"].toInt(255), 255);
+
+		createHeader();
+
+		if (_white_channel_calibration)
+			Debug(_log, "White channel limit: {:d}, red: {:d}, green: {:d}, blue: {:d}", _white_channel_limit, _white_channel_red, _white_channel_green, _white_channel_blue);
+
+		isInitOK = true;
+	}
+
+	return isInitOK;
+}
+
+int DriverSpiHyperSPI::open()
+{
+	uint8_t rpBuffer[] = { 0x41, 0x77, 0x41, 0x2a, 0xa2, 0x15, 0x68, 0x79, 0x70, 0x65, 0x72, 0x68, 0x64, 0x72 };
+
+	auto ret = ProviderSpi::open();
+
+	if (_isDeviceReady)
+	{
+		auto type = getSpiType();
+		if (type == "rp2040")
+		{
+			writeBytesRp2040(sizeof(rpBuffer), rpBuffer);
+		}
+		else if (type == "esp32")
+		{
+			writeBytesEsp32(sizeof(rpBuffer), rpBuffer);
+		}
+	}
+
+	return ret;
+}
+
+int DriverSpiHyperSPI::close()
+{
+	if (_isDeviceReady)
+	{
+		uint8_t rpBuffer[] = { 0x41, 0x77, 0x41, 0x2a, 0xa2, 0x35, 0x68, 0x79, 0x70, 0x65, 0x72, 0x68, 0x64, 0x72 };
+
+		auto type = getSpiType();
+		if (type == "rp2040")
+		{
+			writeBytesRp2040(sizeof(rpBuffer), rpBuffer);
+		}		
+	}
+
+	return ProviderSpi::close();
+}
+
+void DriverSpiHyperSPI::createHeader()
+{
+	unsigned int totalLedCount = _ledCount - 1;
+
+	auto finalSize = (uint64_t)_headerSize + (_ledCount * 3) + 8;
+	_ledBuffer.resize(finalSize, 0x00);
+
+	Debug(_log, "SPI driver with data integration check AWA protocol");
+
+	_ledBuffer[0] = 'A';
+	_ledBuffer[1] = (_enable_ice_rgbw) ? 'W' : 'w';
+	_ledBuffer[2] = (_white_channel_calibration && !_enable_ice_rgbw) ? 'A' : 'a';
+	qToBigEndian<quint16>(static_cast<quint16>(totalLedCount), &_ledBuffer[3]);
+	_ledBuffer[5] = _ledBuffer[3] ^ _ledBuffer[4] ^ 0x55; // Checksum
+
+	Debug(_log, "SPI header for {:d} {:s} leds: {:c} {:c} {:c} {:d} {:d} {:d}", _ledCount, ((_enable_ice_rgbw) ? "infinite" : "finite"),
+		_ledBuffer[0], _ledBuffer[1], _ledBuffer[2], _ledBuffer[3], _ledBuffer[4], _ledBuffer[5]);
+}
+
+
+std::pair<bool, int> DriverSpiHyperSPI::writeInfiniteColors(SharedOutputColors nonlinearRgbColors)
+{
+	if (nonlinearRgbColors->empty() || !_enable_ice_rgbw)
+	{
+		return { _enable_ice_rgbw, 0 };
+	}
+
+	if (_ledCount != nonlinearRgbColors->size())
+	{
+		Warning(_log, "AWA spi infinite led's number has changed (old: {:d}, new: {:d}). Rebuilding buffer.", _ledCount, nonlinearRgbColors->size());
+
+		_ledCount = static_cast<uint>(nonlinearRgbColors->size());
+
+		createHeader();
+	}
+
+	// RGBW by Infinite Color Engine
+	_infiniteColorEngineRgbw.renderRgbwFrame(*nonlinearRgbColors, _currentInterval, _ice_white_mixer_threshold, _ice_white_led_intensity, _ice_white_temperatur, _ledBuffer, _headerSize, _colorOrder);
+
+	// add space at the end for fletcher checksum
+	auto wanted = _headerSize + _ledCount * sizeof(linalg::aliases::byte4) + 8;
+	if (_ledBuffer.size() < wanted)
+		_ledBuffer.resize(wanted);
+
+	uint8_t* hasher = _ledBuffer.data() + _headerSize;
+	uint8_t* writer = hasher + _ledCount * sizeof(linalg::aliases::byte4);
+
+	uint16_t fletcher1 = 0, fletcher2 = 0, fletcherExt = 0;
+	uint8_t position = 0;
+	while (hasher < writer)
+	{
+		fletcherExt = (fletcherExt + (*(hasher) ^ (position++))) % 255;
+		fletcher1 = (fletcher1 + *(hasher++)) % 255;
+		fletcher2 = (fletcher2 + fletcher1) % 255;
+	}
+	*(writer++) = (uint8_t)fletcher1;
+	*(writer++) = (uint8_t)fletcher2;
+	*(writer++) = (uint8_t)((fletcherExt != 0x41) ? fletcherExt : 0xaa);
+	auto bufferLength = writer - _ledBuffer.data();
+
+	if (QString spiType = getSpiType(); spiType == "esp8266")
+		return  { true, writeBytesEsp8266(static_cast<unsigned int>(bufferLength), _ledBuffer.data()) };
+	else if (spiType == "esp32")
+		return  { true, writeBytesEsp32(static_cast<unsigned int>(bufferLength), _ledBuffer.data()) };
+	else if (spiType == "rp2040")
+		return  { true, writeBytesRp2040(static_cast<unsigned int>(bufferLength), _ledBuffer.data()) };
+	else
+		return  { true, writeBytes(static_cast<unsigned int>(bufferLength), _ledBuffer.data()) };
+}
+
+
+int DriverSpiHyperSPI::writeFiniteColors(const std::vector<ColorRgb>& ledValues)
+{
+	if (_ledCount != ledValues.size())
+	{
+		Warning(_log, "AWA spi led's number has changed (old: {:d}, new: {:d}). Rebuilding buffer.", _ledCount, ledValues.size());
+
+		_ledCount = static_cast<uint>(ledValues.size());
+
+		createHeader();
+	}
+
+	auto bufferLength = _headerSize + ledValues.size() * sizeof(ColorRgb) + 8;
+
+	if (bufferLength > _ledBuffer.size())
+	{
+		Warning(_log, "AWA SPI buffer's size has changed. Skipping refresh.");
+
+		return 0;
+	}
+
+	uint8_t* writer = _ledBuffer.data() + _headerSize;
+	uint8_t* hasher = writer;
+
+	memcpy(writer, ledValues.data(), ledValues.size() * sizeof(ColorRgb));
+	writer += ledValues.size() * sizeof(ColorRgb);
+
+	whiteChannelExtension(writer);
+
+	uint16_t fletcher1 = 0, fletcher2 = 0, fletcherExt = 0;
+	uint8_t position = 0;
+	while (hasher < writer)
+	{
+		fletcherExt = (fletcherExt + (*(hasher) ^ (position++))) % 255;
+		fletcher1 = (fletcher1 + *(hasher++)) % 255;
+		fletcher2 = (fletcher2 + fletcher1) % 255;
+	}
+	*(writer++) = (uint8_t)fletcher1;
+	*(writer++) = (uint8_t)fletcher2;
+	*(writer++) = (uint8_t)((fletcherExt != 0x41) ? fletcherExt : 0xaa);
+	bufferLength = writer -_ledBuffer.data();
+
+	QString spiType = getSpiType();
+	if (spiType == "esp8266")
+		return writeBytesEsp8266(static_cast<unsigned int>(bufferLength), _ledBuffer.data());
+	else if (spiType == "esp32")
+		return writeBytesEsp32(static_cast<unsigned int>(bufferLength), _ledBuffer.data());
+	else if (spiType == "rp2040")
+		return writeBytesRp2040(static_cast<unsigned int>(bufferLength), _ledBuffer.data());
+	else
+		return writeBytes(static_cast<unsigned int>(bufferLength), _ledBuffer.data());
+}
+
+void DriverSpiHyperSPI::whiteChannelExtension(uint8_t*& writer)
+{
+	if (_white_channel_calibration)
+	{
+		*(writer++) = _white_channel_limit;
+		*(writer++) = _white_channel_red;
+		*(writer++) = _white_channel_green;
+		*(writer++) = _white_channel_blue;
+	}
+}
+
+LedDevice* DriverSpiHyperSPI::construct(const QJsonObject& deviceConfig)
+{
+	return new DriverSpiHyperSPI(deviceConfig);
+}
+
+bool DriverSpiHyperSPI::isRegistered = hyperhdr::leds::REGISTER_LED_DEVICE("hyperspi", "leds_group_0_SPI", DriverSpiHyperSPI::construct);//awa_spi

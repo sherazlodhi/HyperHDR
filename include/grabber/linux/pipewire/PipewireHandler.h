@@ -1,0 +1,259 @@
+#pragma once
+
+#include <QDebug>
+#include <QObject>
+#include <QVector>
+#include <QList>
+#include <QTimer>
+#include <QVariantList>
+#include <QVariantMap>
+#include <image/MemoryBuffer.h>
+#include <pipewire/pipewire.h>
+#include <spa/param/video/format-utils.h>
+#include <spa/param/video/type-info.h>
+#include <spa/utils/hook.h>
+#include <spa/debug/types.h>
+#include <grabber/linux/pipewire/smartPipewire.h>
+#include <linux/types.h>
+#include <sys/mman.h>
+#include <HyperhdrConfig.h>
+#include <memory>
+#include <atomic>
+#include <array>
+#include <map>
+
+#if !PW_CHECK_VERSION(0, 3, 29)
+#define SPA_POD_PROP_FLAG_MANDATORY (1u << 3)
+#endif
+#if !PW_CHECK_VERSION(0, 3, 33)
+#define SPA_POD_PROP_FLAG_DONT_FIXATE (1u << 4)
+#endif
+
+#ifdef ENABLE_PIPEWIRE_EGL
+#include <GL/gl.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+
+#ifdef Bool
+	#undef Bool
+#endif
+
+typedef void* (*eglGetProcAddressFun)(const char*);
+typedef EGLDisplay(*eglGetPlatformDisplayFun)(EGLenum platform, void* native_display, const EGLAttrib* attrib_list);
+typedef EGLBoolean(*eglTerminateFun)(EGLDisplay display);
+typedef EGLBoolean(*eglInitializeFun)(EGLDisplay dpy, EGLint* major, EGLint* minor);
+typedef EGLint(*eglGetErrorFun)(void);
+typedef EGLBoolean (*eglQueryDmaBufFormatsEXTFun)(EGLDisplay dpy, EGLint max_formats, EGLint* formats, EGLint* num_formats);
+typedef EGLBoolean (*eglQueryDmaBufModifiersEXTFun)(EGLDisplay dpy, EGLint format, EGLint max_modifiers, EGLuint64KHR* modifiers, EGLBoolean* external_only, EGLint* num_modifiers);
+typedef EGLImageKHR (*eglCreateImageKHRFun)(EGLDisplay dpy, EGLContext ctx, EGLenum target, EGLClientBuffer buffer, const EGLint* attrib_list);
+typedef EGLBoolean (*eglDestroyImageKHRFun)(EGLDisplay dpy, EGLImageKHR image);
+typedef EGLContext(*eglCreateContextFun)(EGLDisplay dpy, EGLConfig config, EGLContext share_context, const EGLint* attrib_list);
+typedef EGLBoolean(*eglDestroyContextFun)(EGLDisplay display, EGLContext context);
+typedef EGLBoolean(*eglMakeCurrentFun)(EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx);
+typedef EGLContext(*eglGetCurrentContextFun)(void);
+typedef EGLBoolean(*eglBindAPIFun)(EGLenum api);
+typedef void (*glEGLImageTargetTexture2DOESFun)(GLenum target, GLeglImageOES image);
+
+typedef void (*glBindTextureFun)(GLenum target, GLuint texture);
+typedef void (*glDeleteTexturesFun)(GLsizei n, const GLuint* textures);
+typedef void (*glGenTexturesFun)(GLsizei n, GLuint* textures);
+typedef GLenum (*glGetErrorFun)(void);
+typedef void (*glGetTexImageFun)(GLenum target, GLint level, GLenum format, GLenum type, void* pixels);
+typedef void (*glTexParameteriFun)(GLenum target, GLenum pname, GLint param);
+typedef void (*glGenerateMipmapFun)(GLenum target);
+typedef void (*glPixelStoreiFun)(GLenum pname,GLint param);
+typedef void (*glGenFramebuffersFun)(GLsizei n, GLuint* ids);
+typedef void (*glBindFramebufferFun)(GLenum target, GLuint framebuffer);
+typedef void (*glFramebufferTexture2DFun)(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+typedef void (*glReadPixelsFun)(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* data);
+typedef void (*glDeleteFramebuffersFun)(GLsizei n, GLuint* framebuffers);
+typedef void (*glBlitFramebufferFun)(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
+typedef void (*glTexImage2DFun)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void* data);
+
+#define fourcc_code(a, b, c, d) ((__u32)(a) | ((__u32)(b) << 8) | \
+				 ((__u32)(c) << 16) | ((__u32)(d) << 24))
+#define fourcc_mod_code(vendor, val) \
+	((((__u64)DRM_FORMAT_MOD_VENDOR_## vendor) << 56) | ((val) & 0x00ffffffffffffffULL))
+#define DRM_FORMAT_MOD_VENDOR_NONE    0
+#define DRM_FORMAT_RESERVED	      ((1ULL << 56) - 1)
+#define DRM_FORMAT_MOD_INVALID	fourcc_mod_code(NONE, DRM_FORMAT_RESERVED)
+
+#define DRM_FORMAT_XRGB8888	fourcc_code('X', 'R', '2', '4')
+#define DRM_FORMAT_XBGR8888	fourcc_code('X', 'B', '2', '4')
+#define DRM_FORMAT_ARGB8888	fourcc_code('A', 'R', '2', '4')
+#define DRM_FORMAT_ABGR8888	fourcc_code('A', 'B', '2', '4')
+#endif
+
+class PortalDBus;
+
+class PipewireHandler : public QObject
+{
+	Q_OBJECT
+
+public:
+
+	PipewireHandler();
+	~PipewireHandler();
+
+	void startSession(QString restorationToken, uint32_t requestedFPS, bool enableEGL, int targetMaxSize, int selectedDisplay);
+	void closeSession();
+	bool hasError();
+	bool isRestartNeeded();
+	
+	int		getVersion();
+	QString getToken();
+	QString getError();
+
+	pw_stream* getPipewireStream();
+	bool hasIncomingFrame(struct pw_buffer* dequeueFrame);
+
+	static int	readVersion();
+
+	struct PipewireStructure
+	{
+		uint		objectId;
+		uint		width, height;
+		QVariantMap properties;
+	};
+
+public Q_SLOTS:
+	void releaseWorkingFrame();
+	void getImage(PipewireImage& retVal);
+
+	void onParamsChanged(uint32_t id, const struct spa_pod* param);
+	void onStateChanged(enum pw_stream_state old, enum pw_stream_state state, const char* error);
+	void onProcessFrame();
+	void onCoreError(uint32_t id, int seq, int res, const char *message);
+	void onReleaseBuffer(struct pw_buffer* buffer);
+	
+signals:
+	void onParamsChangedSignal(uint32_t id, const struct spa_pod* param);
+	void onStateChangedSignal(enum pw_stream_state old, enum pw_stream_state state, const char* error);
+	void onProcessFrameSignal();
+	void onCoreErrorSignal(uint32_t id, int seq, int res, const char *message);
+
+private:
+	uint8_t* createMemory(int size);
+	void reportError(const QString& input);
+	QString fourCCtoString(int64_t val);
+
+	void createSessionResponse(uint response, QString session);
+	void selectSourcesResponse(uint response);
+	void startResponse(uint response, QString restoreHandle, uint32_t nodeId, int nodeStreamWidth, int nodeStreamHeight);
+
+	pw_stream*	createCapturingStream();
+	QString		getSessionToken();
+	QString		getRequestToken();
+	void		captureFrame();
+
+	QString _sessionHandle;
+	QString _restorationToken;
+	QString _errorMessage;
+	bool	_portalStatus;
+	bool	_isError;
+	bool	_useRemoteDesktopPortal;
+	int		_version;
+	int		_remoteDesktopVersion;
+	uint	_streamNodeId;
+
+	struct pw_thread_loop*	_pwMainThreadLoop;
+	struct pw_context*		_pwNewContext;
+	struct pw_core*			_pwContextConnection;
+	struct pw_stream*		_pwStream;
+	struct spa_hook			_pwStreamListener;
+	struct spa_hook			_pwCoreListener;
+	struct pw_buffer*		_backupFrame;
+	struct pw_buffer*		_workingFrame;
+
+	int		_targetMaxSize;
+	int		_selectedDisplay;
+	int		_frameWidth;
+	int		_frameHeight;
+	bool	_frameOrderRgb;
+	uint32_t _requestedFPS;
+	std::atomic<struct pw_buffer*> _incomingFrame;
+	int		_infoUpdate;
+	bool	_initEGL;
+	bool	_enableEGL;
+	void*	_libEglHandle;
+	void*	_libGlHandle;
+	int64_t _frameDrmFormat;
+	int64_t _frameDrmModifier;
+	PipewireImage _image;
+
+	MemoryBuffer<uint8_t> _memoryCache;
+
+	std::unique_ptr<PortalDBus> _dbusConnection;
+	std::map<std::string, std::function<void(const QVariantList&, bool)>> _portalHandlers;
+
+#ifdef ENABLE_PIPEWIRE_EGL
+	eglGetProcAddressFun eglGetProcAddress = nullptr;
+	eglInitializeFun eglInitialize = nullptr;
+	eglTerminateFun eglTerminate = nullptr;
+	eglGetPlatformDisplayFun eglGetPlatformDisplay = nullptr;
+	eglGetErrorFun eglGetError = nullptr;
+	eglQueryDmaBufFormatsEXTFun eglQueryDmaBufFormatsEXT = nullptr;
+	eglQueryDmaBufModifiersEXTFun eglQueryDmaBufModifiersEXT = nullptr;
+	eglCreateImageKHRFun eglCreateImageKHR = nullptr;
+	eglDestroyImageKHRFun eglDestroyImageKHR = nullptr;
+	eglCreateContextFun eglCreateContext = nullptr;
+	eglDestroyContextFun eglDestroyContext = nullptr;
+	eglMakeCurrentFun eglMakeCurrent = nullptr;
+	eglGetCurrentContextFun eglGetCurrentContext = nullptr;
+	glEGLImageTargetTexture2DOESFun glEGLImageTargetTexture2DOES = nullptr;
+	eglBindAPIFun eglBindAPI = nullptr;
+
+	glBindTextureFun glBindTexture = nullptr;
+	glDeleteTexturesFun glDeleteTextures = nullptr;
+	glGenTexturesFun glGenTextures = nullptr;
+	glGetErrorFun glGetError = nullptr;
+	glGetTexImageFun glGetTexImage = nullptr;
+	glTexParameteriFun glTexParameteri = nullptr;
+	glGenerateMipmapFun glGenerateMipmap = nullptr;
+	glPixelStoreiFun glPixelStorei = nullptr;
+	glGenFramebuffersFun glGenFramebuffers = nullptr;
+	glBindFramebufferFun glBindFramebuffer = nullptr;
+	glFramebufferTexture2DFun glFramebufferTexture2D = nullptr;
+	glReadPixelsFun glReadPixels = nullptr;
+	glDeleteFramebuffersFun glDeleteFramebuffers = nullptr;
+	glBlitFramebufferFun glBlitFramebuffer = nullptr;
+	glTexImage2DFun glTexImage2D = nullptr;
+
+	EGLDisplay displayEgl = EGL_NO_DISPLAY;
+	EGLContext contextEgl = EGL_NO_CONTEXT;
+	GLuint _eglTexture = 0;
+	GLuint _eglScratchTex = 0;
+	std::array<GLuint, 2> _eglFbos = { 0, 0 };
+
+	const char* eglErrorToString(EGLint error_number);
+	const char* glErrorToString(GLenum errorType);
+	void initEGL();
+
+	struct supportedDmaFormat {
+		int64_t  drmFormat;
+		uint32_t spaFormat;
+		GLenum glFormat;
+		const char* friendlyName;
+		bool hasDma;
+		QVector<uint64_t> modifiers;		
+	};
+
+	supportedDmaFormat _supportedDmaFormatsList[4] = {						
+			{ DRM_FORMAT_XRGB8888, SPA_VIDEO_FORMAT_BGRx, GL_BGRA, "DRM_FORMAT_XRGB8888", false},
+			{ DRM_FORMAT_ARGB8888, SPA_VIDEO_FORMAT_BGRA, GL_BGRA, "DRM_FORMAT_ARGB8888", false},
+			{ DRM_FORMAT_XBGR8888, SPA_VIDEO_FORMAT_RGBx, GL_RGBA, "DRM_FORMAT_XBGR8888", false},
+			{ DRM_FORMAT_ABGR8888, SPA_VIDEO_FORMAT_RGBA, GL_RGBA, "DRM_FORMAT_ABGR8888", false}
+	};
+#endif
+
+	struct PipewireCache {
+
+	#ifdef ENABLE_PIPEWIRE_EGL
+		EGLImageKHR eglImage = EGL_NO_IMAGE_KHR;
+	#endif
+
+		void* mmapPtr = MAP_FAILED;
+		size_t mmapSize = 0;
+
+	};
+};

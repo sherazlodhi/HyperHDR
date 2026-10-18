@@ -1,0 +1,39 @@
+#pragma once
+
+// HyperHDR includes
+#include "ProviderSpi.h"
+#include <led-drivers/ColorRgbw.h>
+#include <led-drivers/InfiniteColorEngineRgbw.h>
+
+class DriverSpiSk6812SPI : public ProviderSpi
+{
+public:
+	explicit DriverSpiSk6812SPI(const QJsonObject& deviceConfig);
+	static LedDevice* construct(const QJsonObject& deviceConfig);
+
+private:
+	bool init(QJsonObject deviceConfig) override;
+	int writeFiniteColors(const std::vector<ColorRgb>& ledValues) override;
+	std::pair<bool, int> writeInfiniteColors(SharedOutputColors nonlinearRgbColors) override;
+
+	RGBW::WhiteAlgorithm _whiteAlgorithm;
+	uint8_t _white_channel_limit;
+	uint8_t _white_channel_red;
+	uint8_t _white_channel_green;
+	uint8_t _white_channel_blue;
+
+	RGBW::RgbwChannelCorrection channelCorrection;
+
+	const int SPI_BYTES_PER_COLOUR;
+	uint8_t bitpair_to_byte[4];
+
+	InfiniteColorEngineRgbw _infiniteColorEngineRgbw;
+	bool _enable_ice_rgbw;
+	linalg::aliases::float3 _ice_white_temperatur;
+	float _ice_white_mixer_threshold;
+	float _ice_white_led_intensity;
+
+	std::vector<uint8_t> _infColors;
+
+	static bool isRegistered;
+};

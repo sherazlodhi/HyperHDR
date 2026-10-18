@@ -1,0 +1,14 @@
+{
+	"type":"object",
+	"required":true,
+	"properties":{
+                "ledType": {
+                        "type": "string",
+                        "title":"edt_dev_spec_ledType_title",
+                        "enum" : ["ws2801","ws2812"],
+                        "default": "ws2801",
+                        "propertyOrder" : 3
+                }
+	},
+	"additionalProperties": true
+}

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>CFBundleIdentifier</key>
+		<string>com.awawa-dev.hyperhdr</string>
+		<key>CFBundleName</key>
+		<string>HyperHDR</string>
+		<key>CFBundleExecutable</key>
+		<string>hyperhdr</string>
+		<key>CFBundleShortVersionString</key>
+		<string>@BUNDLE_SHORT_VERSION@</string>
+		<key>CFBundleVersion</key>
+		<string>@HYPERHDR_VERSION@</string>		
+		<key>CFBundleIconFile</key>
+		<string>Hyperhdr.icns</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>NSCameraUsageDescription</key>
+		<string>HyperHDR needs your permission to access the video capture devices.</string>
+		<key>NSScreenCaptureUsageDescription</key>
+		<string>HyperHDR needs your permission to capture the screen.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>HyperHDR requires microphone access for audio-reactive effects. Once granted, a restart is required to apply the permission.</string>
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>HyperHDR needs access to your local network to discover and communicate with other devices.</string>
+		<key>LSUIElement</key>
+		<true/>
+	</dict>
+</plist>

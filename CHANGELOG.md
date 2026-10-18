@@ -1,0 +1,276 @@
+- Fix RGB splitting across E1.31 universes (#1585) - v22 🆕
+- Fix smoothing algorithm drift in long-running sessions (#1561) - v22 🆕
+- RGBW with Temporal Dithering - powered by Infinite Color Engine (#1483) - v22beta2 🆕
+   - Temporal Dithering: Improved Precision and Adaptive Stabilization (#1490) - v22beta2 🆕
+   - Add RGBW dithering for legacy RPi PWM & SPI sk6812 driver (#1498) - v22beta2 🆕
+- Switch to Filesystem Hierarchy Standard (FHS) compliant installation on Linux (#1477) - v22beta2 🆕
+- Migrate to standard OS config location if ~/.hyperhdr folder is missing (#1472) - v22beta2 🆕
+- Integrate SignPath for automated Windows code signing (#1479) - v22beta2 🆕
+- Add Philips WiZ support (driver + web wizard) Thanks @user83749 (#1469) - v22beta2 🆕
+- Add aspect ratio detection for Amlogic grabber. Thanks @santievil (#1476) - v22beta2 🆕
+- Fix: Allow capturing non-primary macOS displays (#1530) - v22beta2 🆕
+- Fix remote tab JSON parsing error caused by missing black color in API JSON scheme (#1471) - v22beta2 🆕
+- Implement DDP / Hyperk drivers (#1467) - v22beta2 🆕
+- Prepare support for RP2350 in HyperSerialPico integration (#1521) - v22beta2 🆕
+- Add Ubuntu 26.04 LTS and Fedora 44 (#1491) - v22beta2 🆕
+- Fix build without PCH enabled. Thanks @HiassofT for help (#1497) - v22beta2 🆕
+- Update language files. Thanks @AstaRom (#1445) - v22beta2 🆕
+- More accurate simplified Chinese translation. Thanks @DaBinQwQ (#1520) - v22beta2 🆕
+- Fix: use IANA-compliant HTTP reason phrases. Thanks @joeshull (#1510) - v22beta2 🆕
+- Fix: Initial smoothing surge after period of static video input (#1410) - v22beta2 🆕
+- Fix: Minimum brightness preservation in YUV and Hybrid-Inertia smoothing modes (#1410) - v22beta2 🆕
+- Upgrades old style format logging (with %) to c++20 format in some places (#1410) - v22beta2 🆕
+- Restores custom user RGB order at the start (#1410) - v22beta2 🆕
+- Restores compatibility with Qt5.15 (#1410) - v22beta2 🆕
+- Improved state management of the software grabber during sleep and monitor‑suspend events (#1410) - v22beta2 🆕
+  - PipeWire is particularly sensitive to sessions resuming too early after such events and, despite having provided a saved session token, would display a new source select dialog after resume when screen‑lock‑after‑suspend was enabled
+- Set disableOnLocked option enabled by default, because software grabbers for ex. Pipewire wont function properly without it (#1410) - v22beta2 🆕
+- Fix translation resources- v22beta2 🆕
+- Infinite Color Engine: new anti-flickering filter in the smoothing configuration (#1410) - v22beta2 🆕
+   - Implements an anti-flickering filter that minimizes quantization jitter on 8-bit-per-channel drivers (24-bit RGB). Deep color capable drivers (like Philips Hue using entertainment mode) are bypassed as they don't suffer from LSB oscillation.
+- Improved handshake stability connecting to Philips Hue bridge using OpenSSL 3.2+ (#1410) - v22beta2 🆕
+- Fix: Add missing Qt meta-type registrations (#1456) - v22beta2 🆕
+- Infinite Color Engine - Breaking 24-bit Limits (#1261) - v22beta1 🆕
+   - Floating-Point Precision: All color computations use high-precision floating-point arithmetic, eliminating cumulative rounding errors for more accurate results
+   - Linear sRGB Accuracy: Core color transformations are processed in linear sRGB space, ensuring physically correct and consistent light reproduction
+   - Deep-Color Support: Compatible devices, including Philips Hue lamps, LIFX and HD108 LEDs, can take advantage of rendering beyond standard 24-bit RGB color depth.
+   - Advanced color smoothing algorithms: inertia-based physics, exponential, and perceptually-uniform YUV/RGB interpolators for more fluid and natural color transitions
+   - Start migrating to modern C++20
+   - Add Hybrid RGB Smoothing Interpolator (#1379) - v22beta1 🆕
+   - Add Infinite Color Engine support to file LED driver (#1311) - v22beta1 🆕
+   - Infinite Color Engine: add LIFX support for beyond 24-bit rendering (#1299) - v22beta1 🆕
+   - Infinite Color Engine: fix for YUV & hybrid interpolators (#1302) - v22beta1 🆕
+   - Fix RGBCMYK calibration (#1369) - v22beta1 🆕
+- Significant speedup for YUV/NV12/P010 and related codecs (#1374) - v22beta1 🆕
+   - Performance increased up to 46%
+   - Compared performance of RPi 5 vs N100 in HyperHDR video decoding benchmark
+   - Switched to modern C++20 format style logging   
+ - Improved, faster Pipewire + option to disable EGL #1397 - v22beta1 🆕
+   - GPU Scaling (EGL/DMA mode) - scales the desktop on the GPU; only the small final texture is sent to the CPU
+   - Optional HW acceleration - option to disable EGL in the Pipewire configuration
+   - Auto-resume - automatically restarts the grabber if dimensions change or the stream fails
+   - EGL texture caching - improves performance by reusing textures
+   - MemFD caching - reuses file descriptor memory mappings
+- Philips Hue driver: add option for linear or nonlinear RGB color output (#1401) - v22beta1 🆕
+- Add PWM support for Raspberry Pi 5 GPIO/PIO (#1317) - v22beta1 🆕
+   - Reported necessary kernel LED module changes to the RPi team
+- Full FTDI and libFTDI dynamic runtime support. Thanks @nurikk-sa for help (#1155) - v22beta1 🆕
+   - libFTDI support on Linux/macOS
+   - support of manufacturer "ftd2xx.dll" driver on Windows
+- Windows DX grabber: multi-monitor capturing status check & restart - v22beta1 🆕
+- DirectX grabber: support for portrait mode (#1200) - v22beta1 🆕
+- Update language files. Thanks @AstaRom (#1396, #1300, #1288, #1131, #1402, #1403) - v22beta1 🆕
+- Smoothing: restore continuous output control + stricter end detection (#1337) - v22beta1 🆕
+   - Fix rendering w/o continuous output (#1377) - v22beta1 🆕
+- Hide HyperHDR from the macOS Dock (#1345) - v22beta1 🆕
+- Add replacement for libglib2.0-0 (armhf, Y2038 bug) (#1341) - v22beta1 🆕
+- Add QElapsedTimer include to DriverNetLifx.cpp Thanks @arfoll (#1330) - v22beta1 🆕
+- Add just released Ubuntu 25.10 & incoming Fedora 43 (#1304) - v22beta1 🆕
+- Add Windows-2025, macOS-15-intel, Debian Trixie and migrate others (#1296) - v22beta1 🆕
+- Fix for OpenSSL on macOS (needed by HTTPS/TLS) (#1290) - v22beta1 🆕
+- Updated Home Assistant module to enable SSL support. Thanks @josh-blake (#1249) - v22beta1 🆕
+- Don't rely on plutovg CMake script to detect C++11 threads support (#1253) - v22beta1 🆕
+- Migrate ALL installers to Qt 6.8+. Breaking: docker build subsystem (#1203) - v22beta1 🆕
+   - reduced size of HyperHDR's installers
+- Remove min/max limits to allow using only a very small part of the screen capture as input area. Thanks @markusressel (#1175) - v22beta1 🆕
+- Update CMake configuration to add support for additional system libraries. Thanks @hatch01 (#1158) - v22beta1 🆕
+- Add USE_SYSTEM_SDBUS_CPP_LIBS option (#1140) - v22beta1 🆕
+- Update LunaSVG to v3.1.0 (#1139) - v22beta1 🆕
+- Fix ENABLE_PIPEWIRE_EGL=OFF build (#1138) - v22beta1 🆕
+- Amlogic grabber restore & refactor. Thanks @santievil (#1119) - v22beta1 🆕
+- Fix Dutch translations. Thanks @dijkstrar (#1122) - v22beta1 🆕
+- Fix: armv6l packages overwrote aarch64 packages because they had the same name (#1082) - v21
+- Flatbuffers: search for user LUTs also in bin dir - v21
+- Remove support for old 50MB LUT. Use ZSTD instead - v21
+- Update SSL certificates to hyperhdr.eu - v21
+- Add support for Home Assistant lights (#1014) - v21beta2
+- Update language file's (#1026, #1017) thanks @AstaRom - v21beta2
+- Implement zigbee2mqtt protocol (#1024) - v21beta2
+- Add support for ZSTD compression for all LUT files (#1062) - v21beta2
+- Fix CodeQL script (#1058) - v21beta2
+- Lightning-fast builds: use native Github Action ARM runners (#1057) - v21beta2
+- Windows: fix suspend & power off handling (#1039) - v21beta2
+- Pipewire drm workaround fix (#1029) thanks @dankmolot - v21beta2
+- Feature to re-order displays in multi-display mode (#1023) - v21beta2
+- Automatic tone mapping (#998) - v21beta1
+- Add Ubuntu 24.10 and Fedora 41 (#1001) - v21beta1
+- Add support for "unicam image" RPi HDMI capture card and UYVY format (#889) - v21beta1
+- Breaking change: remove LUT from installer and create it dynamically (#994) - v21beta1
+- Fix macOS 15 dark theme menu icons (#988) - v21beta1
+- Add P010 HDR10 video format support (2024-11-24) (#968) - v21beta1
+- DirectX multi-monitor support (#966) - v21beta1
+- macOS 15 sequoia: migrate to ScreenCaptureKit (#984) - v21beta1
+- Add Skydimo "support" (#985) - v21beta1
+- New LUT calibration based on mp4 test videos (part I) (#896) - v21beta1
+- feat: updated rpi_ws281x submodule, thanks @andreasvikke (#974) - v21beta1
+- DX grabber: stick to user specified device selection (#961) - v21beta1
+- Fix LED colors adjustments by configuration name (#956) - v21beta1
+- Add autoresume feature for the macOS software grabber (#879) - v21beta1
+- Add NV12 image format support for flatbuffers (#920) - v21beta1
+- Update language file's Thanks @AstaRom (#883, #923, #998) - v21beta1
+- Update flatbuffers to v24.3.25 (#875) - v21beta1
+- Add cache_cleaner for Github Action (#910) - v21beta1
+- New build.sh script for the HyperHDR build process (#904) - v21beta1
+- Remove Alsa libs from CMake recipe - v21beta1
+- Remove more unnecessary libraries from installers - v21beta1
+- Remove libasound from installers - v21beta1
+- Fix restoring calibration settings (#874) - v21beta1
+- Reorganize HyperHDR libs (#887) - v21beta1
+- Fix macOS image alignment (#838) - v21beta1
+- Remove hyperhdr-remote app. Reason: #856 - v21beta1
+- Refactoring of the FlatBuffers client and server (#880) - v21beta1
+- Remove mbedtls. Use OpenSSL (#877) - v21beta1
+- Removal of QT SQL. Migrate to the SQLite library. (#872) - v21beta1
+- New smoothing option for sound effects, fix ArchLinux installer, refactoring of the smoothing module and music effects (#871) - v21beta1
+- Removal of QT D-Bus, switch to sdbus-cpp (#864) - v21beta1
+- Dependency reductions: removal of heavy QT Gui lib (#861) - v21beta1
+- Fix DirectX capturing after new Systray changes - v21beta1
+- New independed systray. Dependency reductions thanks to removal of QWidget (#852) - v21beta1
+- Fix: lut calibration for grabberless builds (#840) - v21beta1
+- Fix: close LED device on correct Thread (#803) - v21beta1
+- Fedora uses xz as the package name, not xz-utils #771 Thanks @hsmalley (v20 beta2)
+- Fix LUT loading bug to reduce memory usage by 96MB #766 (v20 beta2)
+- Fix background music effect #761 (v20 beta2)
+- Fix typo #762 Thanks @laurens94 (v20 beta2)
+- Yeelight: Wizard now supports more models, workaround for music-mode reset, auto-resume support #750 Thanks @ratawhisk (v20 beta2)
+- Fix verbose command line option #737 (v20 beta2)
+- Add native build for Apple M1 / M2 (arm64) architecture #973 (v20 beta2)
+- New features: disable LEDs/components on startup #737 (v20 beta2)
+- New features: stop processing when user has locked the system #737 (v20 beta2)
+- Force HyperSerial detection #732 Thanks @alex-013 (v20 beta2)
+- Fix Linux DBus sleep/wakeup handler (v20 beta2)
+- Fix pipewire grabber for non-contiguous DMA memory & EGL #711 Thanks @Mic92 (v20 beta2)
+- Update build scripts and include Ubuntu 24.04 LTS (v20 beta2)
+- Fixes for v20beta1 #705 (v20 beta2)
+- Refactoring. Migration to C++ smart pointers (v20 beta)
+- Pixel and vertex shaders hardware acceleration for DX11 Windows grabber (v20 beta)
+- Unified LED driver smoothing and clocking for better linear transition (v20 beta)
+- WLED: migrate to Audio-Reactive-Led-Strip protocol. Overcome 490 LEDs limit (v20 beta)
+- Automatic DB backup before upgrading (v20 beta)
+- support for HyperSPI on Pico rp2040 boards (v20 beta)
+- MQTT: auto-resume broken connection (v20 beta)
+- MQTT: support for multiple JSON API commands in one MQTT request (v20 beta)
+- ArtNet driver: toggle to prevent pixel color data split across multiple universes (v20 beta)
+- Add video buffer memory caching to Pipewire grabber (v20 beta)
+- Fix typo in LED strip name #670 Thanks @fluchfux (v20 beta)
+- Pipewire DMA & EGL hardware support (Wayland/x11 grabber) #556 #556 (v20 beta)
+- Upgrade Fedora 38 to 39, Ubuntu 23.04 to 23.10 #667 (v20 beta)
+- Colorized logs #640 (v20 beta)
+- Fix macOS build #638 #671 #672 (v20 beta)
+- Update language file's. Thanks @AstaRom #505 #538 #571 #617 #710 #716 #723 (v20 beta)
+- Make bonjour use logging utilities. Thanks @nurikk #529 (v20 beta)
+- New interface: removed ancient Font Awesome 4 (so 2017...) Migrate to SVG: Bootstrap Icons and Google Material Icons/Symbols #605 (v20 beta)
+- New device discovery service #605 (v20 beta)
+- Stability improvements & bug fixing #605 (v20 beta)
+- Fix QT5.15 issue when building on Windows #605 (v20 beta)
+- Add new effect: Rainbow Waves #607 (v20 beta)
+- MQTT: hostname address resolver. Thanks @lougovsk #586 (v20 beta)
+- V4L: allow setting of V4L device input, fixes #537. Thanks @Thinner77 #540 (v20 beta)  
+- Update flatbuffers to v23.5.26 #596 (v20 beta)  
+- Pause the USB grabber when all LEDs are off to reduce load #608 (v20 beta) 
+- Add support for HD108 led strip, 16/48bits colors #527 (v20 beta)  
+- Use optional system libs for compiling #541 (v20 beta)  
+- Update mbedtls to 3.4.0 #589 (v20 beta)  
+- Add Ubuntu support to HyperHDR and Github Pages APT repository #522 (v20 beta)
+- New JsonAPI method to calculate average color of selected instance #611 (v20 beta)
+- Workaround for critical Rpi udev bug affecting serial ports #583 (v20 beta)  
+- Add Arch Linux support #520 (v20 beta)  
+- Fix chrome/edge fullscreen detection #519 (v20 beta)  
+- Add automatic LUT downloader & installer #568 (v20 beta)  
+- Allow LUT calibration when no USB grabber is present #518 (v20 beta)  
+- Live update WLED/udpraw LEDs number #564 (v20 beta) 
+- Add support for Raspberry Pi Pico (Rp2040) HyperSerialPico #560 (v20 beta)  
+- Do not use TurboJPEG for RGB during calibration #508 (v20 beta)  
+- Update Github actions/checkout@v3 #403 (v20 beta) 
+- glibc requirements for DEB installer #402 (v20 beta)  
+- Remove folders nesting #363 (v20 beta)  
+- New JSON API method to update smoothing parameters #352 (v20 beta)  
+- Update Github actions/download@v3 #372 (v20 beta)  
+- Remove depraciated ::set-output from Github Action #390 (v20 beta)  
+- Upgrade Bootstrap to 5.2.3 / improved 'video live preview' on smartphones #336 (v20 beta)  
+- LED designer context menu to disable, identify or customize LED position and size etc   
+- Added Philips Hue Entertainment API 2. Support for Hue gradients (thanks  @gibahjoe)  
+- Save/restore WLED state and set max brightness at startup  
+- Support for precompiled headers  
+- Colored cmake output  
+- Adalight: auto-resume, resume the device if failed  
+- Adalight: ESP8266/ESP32 auto-discovery, 'auto' searches for known ESP  
+- Adalight: ESP8266/ESP32 handshake to properly initialize the ESP device and read statistics  
+- Add statistics about dropped LED frames  
+- Add support for utv007 / Linux  
+- Modifiable SPI path with device auto-detection  
+- Flatbuffers: selectable custom LUT files via API  
+- Overall performance without tone mapping for USB grabbers improved x10 (MJPEG) and x3 (YUV) over Hyperion NG 2.0.0.8A thanks to optimization & using of multi-threading
+- Direct support for USB grabbers under Windows 10, Linux and macOS (really fast & of course multi-threaded)
+- Support for software screen grabbers: DirectX11, CoreGraphics, X11
+- New software grabber for Linux: Wayland (pipewire/portal) which also means support for **Ubuntu 22.04 LTS**
+- Registering HyperHDR services with the MQTT broker
+- Frame Buffer software screen grabber (Linux)
+- Reworked network discovery service and added Windows support
+- Improved Philips Hue wizard
+- WLED Configuration Wizard can discover WLED devices on the network
+- Protocol buffers HDR tone mapping
+- Replaced protobuf with a lightweight nanopb library
+- System event support: hibernation/sleep/wake up/resume
+- Added WLED auto-resume initialization and improved existing Philips Hue auto-resume feature
+- Wayland grabber: support for pipewire/portal version 4 protocol persistent authentication
+- [New fully automatic LUT calibration for HDR/SDR/YUV](https://www.hyperhdr.eu/2022/04/usb-grabbers-hdr-to-sdr-quality-test.html)
+- 30% improved performance for MJPEG HDR mode
+- Add white channel calibration for RGBW led strips and latest HyperSerialEsp8266/HyperSerialESP32/HyperSPI ([Adalight](https://i.postimg.cc/hv9366VD/calib1.jpg) [HyperSPI](https://i.postimg.cc/kGdTQszk/calib2.jpg))
+- New dynamic video cache buffers (improved performance, fixes [#142](https://github.com/awawa-dev/HyperHDR/issues/142))
+- Performance information panel in the overview tab
+    - CPU performance and RAM usage (excluding Apple M1)
+    - CPU temperature reading (Linux only, when sensor is present)
+    - Under-voltage detection (Raspberry Pi OS only)
+    - USB grabber performance (shows framerate and latency)
+    - Instance input images to LED colors performance
+    - LED device output performance
+- New JSON API function to control USB grabber: brightness, contrast, saturation, hue
+- USB grabber latency benchmark ([link](https://www.hyperhdr.eu/2021/10/usb-grabbers-grand-latency-test-part-i.html))
+- HDR tone mapping for flatbuffers ([PR #215](https://github.com/awawa-dev/HyperHDR/pull/215) thanks @chbartsch) and protobuf
+- Dynamic LED layout resize on container size changed
+- Improved and refactored LED devices model and communication
+- Flatbuffers/Protobuf: HDR tone mapping can use an alternative filename: *flat_lut_lin_tables.3d*
+- FlatBuffers: add support for high performance local sockets ([link](https://github.com/awawa-dev/HyperHDR/commit/1100093068196a53eff5f856f0eaaf8e43ca229f))
+- The new build scheme allows grabber-less configuration and the use of external toolchains
+- Add popular 'UDP raw' (WLED compatible) receiver for HyperHDR ([link1](https://i.postimg.cc/RV4PqPct/udpraw.jpg) [link2](https://github.com/awawa-dev/HyperHDR/commit/5fb1be1c4bdbc84becfd964a08cb106482b6c4e5))
+- User interface upgraded to modern standards (Bootstrap 5)
+- Improved LUT table for SDR(yuv) and HDR video streams
+- Support for CEC (turn ON/OFF grabbers, remote keys to command HDR tone mapping)
+- Support for my new [HyperSPI](https://github.com/awawa-dev/HyperSPI) project for Rpi. Fastest possible cable solution for almost every generic ESP8266/ESP32 LED driver
+- Fork of WLED with USB serial port AWA protocol at @2000000 speed for ESP32 & ESP8266 and almost all types of LED strips: [HyperSerialWLED](https://github.com/awawa-dev/HyperSerialWLED)
+- Support for WS281x RGB, SK6812 RGBW, APA102 like LED strips using USB serial port AWA protocol for ESP8266 at @2000000 baud with data integrity check: [HyperSerialEsp8266](https://github.com/awawa-dev/HyperSerialEsp8266)
+- Support for WS281x RGB, SK6812 RGBW, APA102 like LED strips using USB serial port AWA protocol for ESP32 at @2000000 baud with data integrity check: [HyperSerialESP32](https://github.com/awawa-dev/HyperSerialESP32)
+- Automatic signal detection with smart learning capability for USB grabbers
+- Re-implemented backup import / export functions for ALL instances
+- New video stream crop method in JSON API and GET multi-command support
+- Auto-resume option for the USB grabber
+- JSON API documentation in a form of live playground in 'Advanced' tab
+- List of available COM ports for the adalight driver
+- Fix: in specific cases some devices could not react to the 'no video signal' event when it's triggered
+- New installer for Raspberry Pi 3 & 4 64bit OS (AARCH64), faster up to 30% over 32bit OS armv7l version
+- Fix for WLED new network protocol
+- LED grouping *aka* PC mode *aka* gradient mode, can help with eye fatigue when used with the monitor, each LED in the group has same average color
+- Add timeout for the anti-flickering filter
+- Panel for easy video resolution & refresh mode selection in the grabber section
+- Support for QT6.2
+- Lower CPU usage when automatic signal detection triggers 'no-signal'
+- Fixed power saving issue in macOS version
+- Audio visualization effects (Windows, macOS and Linux)
+- Support for YUV, MJPEG, RGB24, I420, NV12 and XRGB encoding
+- Overall (_'Quarter of frame'_ in the USB grabber section) and per an instance (_'Sparse processing'_ in the _Processing_ tab) options to control quality/performance balance.
+- Hardware brightness, contrast, saturation, hue control for USB grabbers (Windows and Linux)
+- Philips Hue driver (inc. Entertainment API) partially rewritten and working. Customized new options for powering on/off the lamps
+- New option to choose video encoding format (for multi format grabbers for ex. Ezcap 269, MS2109 clones)
+- special LUT table dedicated for Ezcap 320 grabber available in the download section
+- Add configurable Signal Threshold Counter option for signal detection
+- LUT table tone mapping, mainly for HDR correction and fast color space transformation (YUV).
+- New advanced & weighted advanced LED mean color algorithm in _Image&#8594;LED mapping_
+- Improved backlight algorithm to minimize leds flickering on the dark scenes (configurable in the _Smoothing_)
+- Add old style color calibration (HSL) using luminance, saturation et.
+- Build for newer Raspbian Buster. It's a complete migration from older Raspbian Stretch
+- Option for _hyperhdr-remote_, JSON API and web GUI remote to turn on/off HDR tone mapping
+- Option for luminescence & saturation for hyperhdr-remote
+- Ready to write SD images of HyperHDR
+- Fix for SK9822 leds on SPI (aka fake APA102)
+- Windows, macOS DMG and Linux DEB & RPM installers contain default LUT table

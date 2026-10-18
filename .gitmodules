@@ -1,0 +1,32 @@
+[submodule "external/rpi_ws281x"]
+	path = external/rpi_ws281x
+	url = https://github.com/jgarff/rpi_ws281x
+	branch = master
+[submodule "external/flatbuffers"]
+	path = external/flatbuffers
+	url = https://github.com/google/flatbuffers
+	branch = master
+[submodule "external/mbedtls"]
+	path = external/mbedtls
+	url = https://github.com/ARMmbed/mbedtls
+[submodule "external/mdns"]
+	path = external/mdns
+	url = https://github.com/mjansson/mdns.git
+[submodule "external/lunasvg"]
+	path = external/lunasvg
+	url = https://github.com/sammycage/lunasvg.git
+[submodule "external/nanopb"]
+	path = external/nanopb
+	url = https://github.com/nanopb/nanopb.git
+[submodule "external/stb"]
+	path = external/stb
+	url = https://github.com/nothings/stb.git
+[submodule "external/linalg"]
+	path = external/linalg
+	url = https://github.com/sgorsten/linalg.git
+[submodule "external/zstd"]
+	path = external/zstd
+	url = https://github.com/facebook/zstd.git
+[submodule "external/core_mqtt"]
+	path = external/core_mqtt
+	url = https://github.com/freertos/coreMQTT

@@ -1,0 +1,5 @@
+<RCC>
+	<qresource prefix="/">
+		${HYPERHDR_RES}
+	</qresource>
+</RCC>
